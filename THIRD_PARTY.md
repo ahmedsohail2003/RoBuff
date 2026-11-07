@@ -81,3 +81,14 @@ Rock friction (0.6 C-type, 0.7 S-type) and iron friction (0.6) are design values
 ## Test pictures (M1 update, 2026-11-07)
 
 The browser tests no longer use any photograph. `web/e2e/s3-hand.spec.ts` paints the synthetic hand's 21 landmarks as a flat hand (`web/src/input/drawHand.ts`, our code) at test time, checks the hand model on that picture, and writes it frame by frame into the fake-camera clip `web/e2e/fixtures/synthetic_hand_640x480.y4m` (git-ignored, regenerated each run). A fresh clone runs every case without fetching anything. The MediaPipe sample photo `woman_hands.jpg` listed under "Test fixtures" and in the row above is no longer read by any test and is not in the repository; the rows about it stay only as history.
+
+## Voice and the key server (M5 update, 2026-11-07)
+
+This section supersedes the Gemini and ElevenLabs rows of "Services, imagery and sources named in the docs" above: the code that calls them now exists, but it has not run against either service, because no key exists yet.
+
+| Item | Status in this build | Terms and attribution |
+| --- | --- | --- |
+| Key server `server/index.mjs`, `server/limits.mjs` | New code written today. Node built-ins only, no packages. Reads keys from `web/.env` or the environment, never logs or returns them; per-IP 30 requests a minute, daily caps of 300 spec calls and 20,000 TTS characters, origin check. | Ours (Apache-2.0 with the rest of the repo). |
+| Google Gemini API, `gemini-3.8-flash` `generateContent` with structured output | Code present (`POST /api/spec`), not yet run: with no key `/api/health` says `"gemini":"missing"` and the app uses its offline keyword mock, labelled "object brain: offline mock (no key)". | Google's Gemini API terms apply once a key is used. Only the typed or transcribed request text would be sent. |
+| ElevenLabs text to speech, `eleven_flash_v2_5` streaming | Code present (`POST /api/tts`), not yet run: with no key the console speaks with the browser's own `speechSynthesis`, labelled "voice: browser (offline)". Audio of fixed lines would be cached in `web/.voice-cache/` (git-ignored) and the caption says "cached" when it is replayed. | When it runs, the voice badge reads "voice: ElevenLabs (live)"; the README will credit ElevenLabs. Only the console's line text would be sent. |
+| Browser speech recognition (Web Speech API) for hold-to-talk | Used only while the talk button or V is held, and only in browsers that have it. In Chrome it sends the microphone audio to the browser's speech service, so it needs the network; the on-screen badge says so. Without it the text box does the same job. | The browser vendor's terms. Nothing of ours is sent. |
