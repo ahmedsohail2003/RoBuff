@@ -1,0 +1,23 @@
+<!--
+  Project scene, written for this project. Everything else in this folder is the
+  unmodified MuJoCo Menagerie trs_so_arm100 model (see THIRD_PARTY.md).
+  The arm sits on the floor: its base is a static body, and it faces -y.
+-->
+<mujoco model="hand arm arena">
+  <include file="so_arm100.xml"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+  </visual>
+
+  <worldbody>
+    <light name="key" pos="0.4 -0.6 1.2" dir="-0.3 0.5 -1" directional="true" castshadow="true"/>
+    <geom name="floor" type="plane" size="1 1 0.05" rgba="0.82 0.84 0.87 1"/>
+
+    <body name="cube" pos="0 -0.22 0.015">
+      <freejoint name="cube_free"/>
+      <geom name="cube_geom" type="box" size="0.015 0.015 0.015" mass="0.02"
+        friction="1 0.005 0.0001" rgba="0.85 0.25 0.2 1"/>
+    </body>
+  </worldbody>
+</mujoco>
