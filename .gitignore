@@ -1,0 +1,13 @@
+# Private files: git never commits or publishes these.
+# See "Private files" in README.md.
+
+# Any folder named private, at any depth
+private/
+
+# Any file with .private. in its name, such as pitch.private.md
+*.private.*
+
+# Secrets
+.env
+.env.*
+!.env.example
