@@ -1,0 +1,17 @@
+session_id,trial_idx,block,condition,practice,excluded,exclude_reason,operator,input_source,delay_oneway_ms,gravity_mps2,rock_spec_id,rock_seed,rock_size_mm,rock_mass_true_g,rock_mass_ghost_g,friction_true,friction_ghost,cutoff_s,t_go_iso,completion_s,success,reach_s,grasp_s,grasp_attempts,drops,reversals,pauses,max_ghost_err_mm,mean_ghost_err_mm,hand_lost_ms,render_fps_median,build_id
+fixture-gate-16,1,warmup,direct,1,0,,fixture,synthetic,0,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:01:00.000Z,9.4,1,3.1,4.8,1,0,3,0,,,0,60,fixture
+fixture-gate-16,2,warmup,direct,1,0,,fixture,synthetic,0,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:02:00.000Z,8.1,1,2.8,3.8,1,0,2,0,,,0,60,fixture
+fixture-gate-16,3,warmup,direct,1,0,,fixture,synthetic,0,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:03:00.000Z,7.6,1,2.5,3.6,1,0,2,0,,,0,60,fixture
+fixture-gate-16,4,warmup,direct,1,0,,fixture,synthetic,0,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:04:00.000Z,8.8,1,2.9,4.4,1,0,3,1,,,0,60,fixture
+fixture-gate-16,5,1,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:05:00.000Z,32.4,1,14.2,16.7,2,0,9,6,,,0,60,fixture
+fixture-gate-16,6,1,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:06:00.000Z,27.9,1,9.8,16.6,2,0,6,3,11.4,4.2,0,60,fixture
+fixture-gate-16,7,1,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:07:00.000Z,24.6,1,8.9,14.2,1,0,5,2,9.7,3.8,0,60,fixture
+fixture-gate-16,8,1,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:08:00.000Z,29.8,1,13.0,15.3,2,0,8,5,,,0,60,fixture
+fixture-gate-16,9,2,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:09:00.000Z,,0,,,4,2,14,9,,,0,60,fixture
+fixture-gate-16,10,2,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:10:00.000Z,25.1,1,9.1,14.5,2,1,6,3,12.8,4.5,0,60,fixture
+fixture-gate-16,11,2,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:11:00.000Z,23.0,1,8.4,13.1,1,0,5,2,8.9,3.5,0,60,fixture
+fixture-gate-16,12,2,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:12:00.000Z,30.6,1,13.7,15.4,2,0,8,6,,,0,60,fixture
+fixture-gate-16,13,3,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:13:00.000Z,28.2,1,12.6,14.1,1,0,8,5,,,0,60,fixture
+fixture-gate-16,14,3,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:14:00.000Z,29.0,1,9.5,18.0,3,1,7,4,14.1,5.0,0,60,fixture
+fixture-gate-16,15,3,ghost_on,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:15:00.000Z,22.4,1,8.0,12.9,1,0,4,2,9.2,3.6,0,60,fixture
+fixture-gate-16,16,3,ghost_off,0,0,,fixture,synthetic,1280,1.62,fixture-rock,7,40,57.1,39.7,0.6,0.8,90,2000-01-01T00:16:00.000Z,27.1,1,12.2,13.4,1,0,7,5,,,0,60,fixture
