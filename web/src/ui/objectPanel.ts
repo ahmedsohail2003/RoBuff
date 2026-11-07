@@ -1,6 +1,7 @@
 // The object panel: describe an object or pick a preset, then watch the receipt tick as each
-// stage runs, with a jaw gauge, a mass bar and the verdict. Specs come from the offline
-// keyword mock, and the panel says so: no Gemini call is made.
+// stage runs, with a jaw gauge, a mass bar and the verdict. Specs come from the object brain
+// (Gemini when the key server has a key, otherwise the offline keyword mock), and the badge
+// says which. The finished receipt is spoken (and captioned) by the console voice.
 
 import type { App } from '../app';
 import { say } from '../objects/format';
@@ -13,11 +14,13 @@ import { fetchModelFiles, ObjectSlot } from '../sim/objectSlot';
 import { gravity, type GravityPreset } from '../sim/gravity';
 import { physicsOnlyFilesAsync } from '../sim/physicsScene';
 import { installObjectHooks } from './objectHooks';
+import { BRAIN_BADGE, objectBrain } from '../objects/objectBrain';
+import { consoleVoice, receiptLine } from '../voice/speak';
 
 export interface PanelPreset {
   id: string;
   label: string;
-  /** What is sent to the offline mock: a preset id or free text. */
+  /** What is sent to the object brain: a preset id or free text. */
   text: string;
 }
 
@@ -104,7 +107,18 @@ export class ObjectPanel {
     if (!document.getElementById('object-panel-style')) document.head.appendChild(el('style', { id: 'object-panel-style' }, STYLE));
     this.root = el('section', { id: 'object-panel', 'aria-label': 'Object fabricator' });
     const title = el('h2', {}, 'Object fabricator');
-    title.appendChild(el('span', { class: 'mock', 'data-testid': 'offline-mock', title: 'Specs come from a keyword parser in the browser. No Gemini call is made.' }, 'offline mock, no Gemini'));
+    const badge = el('span', { class: 'mock' });
+    const showBrain = (): void => {
+      const live = objectBrain.live;
+      badge.textContent = live ? BRAIN_BADGE.live : BRAIN_BADGE.offline;
+      badge.dataset.testid = live ? 'object-brain-live' : 'offline-mock';
+      badge.title = live
+        ? 'Specs come from Gemini 3.8 Flash through the key server. Presets still use their fixed specs.'
+        : 'Specs come from a keyword parser in the browser. No Gemini call is made.';
+    };
+    showBrain();
+    objectBrain.onChange(showBrain);
+    title.appendChild(badge);
     this.root.appendChild(title);
 
     const form = el('form');
@@ -160,7 +174,9 @@ export class ObjectPanel {
     this.recheck.hidden = true;
     this.setBusy(true);
     try {
-      await this.requests.run(text, (progress) => this.render(progress));
+      const outcome = await this.requests.run(text, (progress) => this.render(progress));
+      const line = receiptLine(outcome.receipt, outcome.spawned);
+      consoleVoice.say(line.text, line.kind);
     } catch (error) {
       this.verdict.dataset.verdict = 'REFUSED';
       this.verdict.textContent = `Something broke: ${error instanceof Error ? error.message : String(error)}`;
@@ -252,6 +268,7 @@ export async function mountObjectPanel(app: App, mujoco: Mujoco, withHooks: bool
   const renderer = new SlotRenderer(group);
   const requests = new ObjectRequests(mujoco, slot, { onOccupant: (receipt) => renderer.show(receipt) });
   const panel = new ObjectPanel(document.body, requests);
+  objectBrain.requestObject = (text) => panel.request(text);
   gravity.onChange((preset) => panel.showFrictionAt(preset));
   if (withHooks) installObjectHooks(app, requests, panel, renderer);
   return panel;

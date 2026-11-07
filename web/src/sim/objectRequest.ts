@@ -1,11 +1,11 @@
-// One object request, end to end: offline mock -> cheap guardrail -> spawn in the live
+// One object request, end to end: object brain -> cheap guardrail -> spawn in the live
 // scene -> settle on the pad -> headless lift test -> verdict. Each stage is reported as it
-// runs, so the panel can tick it. Nothing here calls a network API: specs come from the
-// package's offline keyword mock and presets.
+// runs, so the panel can tick it. The spec comes from the object brain: Gemini through the
+// key server when it is live, otherwise the offline keyword mock and presets, with no network call.
 
 import { proveLift } from '../objects/lift';
 import { validate } from '../objects/guardrail';
-import { specFromText } from '../objects/mock';
+import { objectBrain, type ObjectBrain, type SpecResult } from '../objects/objectBrain';
 import { receiptSummary, type Receipt, type ReceiptStep } from '../objects/receipt';
 import { withSettleStep } from '../objects/settle';
 import { say } from '../objects/format';
@@ -24,7 +24,7 @@ export interface Stage {
 
 export interface RequestProgress {
   text: string;
-  source: 'offline-mock';
+  source: SpecResult['source'];
   matched: string[];
   stages: Stage[];
   receipt: Receipt | null;
@@ -35,7 +35,7 @@ export interface RequestProgress {
 
 export interface RequestOutcome {
   text: string;
-  source: 'offline-mock';
+  source: SpecResult['source'];
   matched: string[];
   spawned: boolean;
   receipt: Receipt;
@@ -43,7 +43,7 @@ export interface RequestOutcome {
   spawn: Omit<SpawnReport, 'rest'> | null;
   runs: LiftRun[];
   /** Wall-clock ms: recompile of the live scene, settle, and the whole lift test. */
-  timings: { recompile_ms: number | null; swap_ms: number | null; settle_ms: number | null; lift_ms: number | null; total_ms: number };
+  timings: { spec_ms: number; recompile_ms: number | null; swap_ms: number | null; settle_ms: number | null; lift_ms: number | null; total_ms: number };
   /** Degrees the live object was turned on the pad to match the passing lift attempt. */
   live_turn_deg: number | null;
 }
@@ -78,6 +78,7 @@ export class ObjectRequests {
     private readonly mujoco: Mujoco,
     readonly slot: ObjectSlot,
     private readonly hooks: ObjectRequestHooks,
+    private readonly brain: ObjectBrain = objectBrain,
   ) {}
 
   async run(text: string, onProgress: (progress: RequestProgress) => void = () => {}): Promise<RequestOutcome> {
@@ -92,7 +93,7 @@ export class ObjectRequests {
 
   private async runInner(text: string, onProgress: (progress: RequestProgress) => void): Promise<RequestOutcome> {
     const t0 = performance.now();
-    const mock = specFromText(text);
+    const mock = await this.brain.specFor(text);
     const stages: Stage[] = [];
     const progress: RequestProgress = { text, source: mock.source, matched: mock.matched, stages, receipt: null, verdict: null, done: false };
     const emit = (): void => onProgress({ ...progress, stages: stages.map((s) => ({ ...s })) });
@@ -102,8 +103,12 @@ export class ObjectRequests {
       return stage;
     };
 
-    const matched = mock.matched.length ? mock.matched.join(', ') : 'no keywords, so defaults';
-    push({ code: 'REQUEST', state: 'ok', text: `Offline mock read the request (no Gemini call): ${matched}. ${mock.spec.why}` });
+    if (mock.source === 'gemini') {
+      push({ code: 'REQUEST', state: 'ok', text: `Gemini 3.8 Flash wrote the spec in ${say(mock.latency_ms)} ms. ${mock.spec.why}` });
+    } else {
+      const matched = mock.matched.length ? mock.matched.join(', ') : 'no keywords, so defaults';
+      push({ code: 'REQUEST', state: mock.note ? 'note' : 'ok', text: `${mock.note ? `${mock.note} ` : ''}Offline mock read the request (no Gemini call): ${matched}. ${mock.spec.why}` });
+    }
 
     const gravity = Math.abs((this.slot.sim.model.opt.gravity as Float64Array)[2]!);
     let receipt = validate(mock.spec, { gravity_m_s2: gravity });
@@ -116,7 +121,7 @@ export class ObjectRequests {
     }
     if (gravity < LOW_GRAVITY_NOTE_BELOW) push({ code: 'LOW_GRAVITY', state: 'note', text: LOW_GRAVITY_NOTE });
 
-    const timings: RequestOutcome['timings'] = { recompile_ms: null, swap_ms: null, settle_ms: null, lift_ms: null, total_ms: 0 };
+    const timings: RequestOutcome['timings'] = { spec_ms: mock.latency_ms, recompile_ms: null, swap_ms: null, settle_ms: null, lift_ms: null, total_ms: 0 };
     const finish = (spawned: boolean, spawn: SpawnReport | null, runs: LiftRun[], liveTurn: number | null): RequestOutcome => {
       timings.total_ms = performance.now() - t0;
       progress.verdict = receipt.verdict;
