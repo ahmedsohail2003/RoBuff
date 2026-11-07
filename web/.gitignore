@@ -19,3 +19,5 @@ e2e/fixtures/*.jpg
 /evidence
 # Scratch output of the S5 regression runs
 /.s5-regress
+# ElevenLabs audio for fixed console lines, cached by the key server (server/index.mjs)
+/.voice-cache

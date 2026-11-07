@@ -1,0 +1,12 @@
+{
+  "name": "aftergrip-key-server",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Holds the Gemini and ElevenLabs keys for the Aftergrip web app. No dependencies.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test test/limits.test.mjs test/routes.test.mjs"
+  }
+}

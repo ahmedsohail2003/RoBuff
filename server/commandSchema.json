@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "description": "One console request. intent says what to do; for intent spawn the other fields describe one object. The sizes are requests: a validator rescales or refuses them.",
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["spawn", "set_gravity", "home", "help", "none"],
+      "description": "spawn: make an object. set_gravity: change gravity. home: send the arm home. help: list commands. none: anything else. Never stop or resume: the browser handles those itself."
+    },
+    "gravity": {
+      "type": "string",
+      "enum": ["earth", "mars", "moon", "bennu", "orbit", "none"],
+      "description": "For set_gravity, which setting; otherwise none."
+    },
+    "kind": { "type": "string", "enum": ["asteroid", "panel", "dish", "bus", "fragment"], "description": "Which generator makes the shape." },
+    "width_mm": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 2000000000,
+      "description": "Requested width across, in millimetres. Quote the size the person asked for, even if huge."
+    },
+    "height_mm": { "type": "number", "minimum": 1, "maximum": 2000000000, "description": "Requested height, in millimetres." },
+    "roughness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Small surface detail, 0 smooth to 1 rough." },
+    "lumpiness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Large shape variation, 0 regular to 1 lumpy." },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Random seed. Same seed, same shape." },
+    "material": { "type": "string", "enum": ["c_type_rock", "s_type_rock", "ice", "aluminium", "iron"], "description": "Material. It sets density and friction." },
+    "color": { "type": "string", "description": "Display color as #rrggbb." },
+    "why": { "type": "string", "description": "One short sentence on why these values fit the request." }
+  },
+  "required": ["intent", "gravity", "kind", "width_mm", "height_mm", "roughness", "lumpiness", "seed", "material", "color", "why"],
+  "propertyOrdering": ["intent", "gravity", "kind", "width_mm", "height_mm", "roughness", "lumpiness", "seed", "material", "color", "why"]
+}
