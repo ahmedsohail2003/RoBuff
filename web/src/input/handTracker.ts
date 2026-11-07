@@ -56,3 +56,28 @@ export function handsFromResult(result: HandLandmarkerResult): RawHand[] {
 export function bestHand(hands: readonly RawHand[]): RawHand | null {
   return hands.reduce<RawHand | null>((best, hand) => (!best || hand.score > best.score ? hand : best), null);
 }
+
+/** ?hands=1|2: how many hands the tracker looks for. Anything else means 1. */
+export function handsFromUrl(search: string): 1 | 2 {
+  return new URLSearchParams(search).get('hands') === '2' ? 2 : 1;
+}
+
+/**
+ * One detection on a blank picture of the camera's size, so the slow first call (GPU
+ * shader setup: 7.7-10.6 s in the S3 runs) happens while the start screen is up, not on
+ * the first camera frame. Returns how long it took, in ms. Its timestamp is now, so later
+ * VIDEO-mode calls (which need increasing timestamps) only have to use later times.
+ */
+export function warmUp(tracker: HandTracker, width = 640, height = 480): number {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const g = canvas.getContext('2d');
+  if (g) {
+    g.fillStyle = '#808080';
+    g.fillRect(0, 0, width, height);
+  }
+  const start = performance.now();
+  tracker.landmarker.detectForVideo(canvas, start);
+  return performance.now() - start;
+}

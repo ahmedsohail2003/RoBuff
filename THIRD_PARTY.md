@@ -77,3 +77,7 @@ Rock friction (0.6 C-type, 0.7 S-type) and iron friction (0.6) are design values
 | NASA imagery | None used. The space backdrop is drawn by our code (`web/src/render/spaceScene.ts`). | Not applicable. |
 | Test photo `web/e2e/fixtures/woman_hands.jpg` | Not replaced yet. It is git-ignored and not in this repository, so a fresh clone cannot run the photo and fake-camera cases of `e2e/s3-hand.spec.ts` until it is fetched or replaced with a photo we own. | Licence not stated (see "Test fixtures" above). |
 | Facts quoted in `README.md` and `HOW_IT_WORKS.md` | Sources, all retrieved 2026-11-07: NASA NSSDC Moon fact sheet (mean distance 384,400 km); Louca et al. 2024, ACM THRI, doi:10.1145/3651993; Sheridan 1984, NTRS 19850006202; Richter et al. 2019, IEEE ICRA, arXiv 1809.08627; DLR's ROTEX history page; the Canadian Space Agency's Canadarm3 page. | Facts and short citations only; no text or images copied. |
+
+## Test pictures (M1 update, 2026-11-07)
+
+The browser tests no longer use any photograph. `web/e2e/s3-hand.spec.ts` paints the synthetic hand's 21 landmarks as a flat hand (`web/src/input/drawHand.ts`, our code) at test time, checks the hand model on that picture, and writes it frame by frame into the fake-camera clip `web/e2e/fixtures/synthetic_hand_640x480.y4m` (git-ignored, regenerated each run). A fresh clone runs every case without fetching anything. The MediaPipe sample photo `woman_hands.jpg` listed under "Test fixtures" and in the row above is no longer read by any test and is not in the repository; the rows about it stay only as history.

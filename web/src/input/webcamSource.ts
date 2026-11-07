@@ -1,8 +1,11 @@
 import { HandMapper } from './handMapper';
 import type { HandState, InputSource } from './handState';
-import { bestHand, createHandTracker, handsFromResult, type HandTracker } from './handTracker';
+import { bestHand, createHandTracker, handsFromResult, warmUp, type HandTracker } from './handTracker';
 
 export type WebcamState = 'idle' | 'starting-camera' | 'loading-model' | 'running' | 'denied' | 'no-camera' | 'error';
+
+/** The hand model, loaded and warmed before the camera starts. */
+export type TrackerState = 'idle' | 'loading' | 'warming-up' | 'warm' | 'failed';
 
 /** With no new detection for this long, the hand counts as lost and the arm holds. */
 const STALE_MS = 400;
@@ -37,6 +40,10 @@ export class WebcamSource implements InputSource {
   message: string | null = null;
 
   private tracker: HandTracker | null = null;
+  trackerState: TrackerState = 'idle';
+  /** How long the warm-up detection took, in ms. */
+  warmupMs: number | null = null;
+  private preparing: Promise<HandTracker> | null = null;
   private stream: MediaStream | null = null;
   private readonly mapper = new HandMapper();
   private latest: HandState | null = null;
@@ -49,14 +56,48 @@ export class WebcamSource implements InputSource {
   private firstDetectionMs: number | null = null;
   private lastScore: number | null = null;
 
-  constructor() {
+  constructor(readonly numHands: 1 | 2 = 1) {
     this.video = document.createElement('video');
     this.video.muted = true;
     this.video.playsInline = true;
   }
 
+  /**
+   * Loads the hand model and runs one warm-up detection, without the camera. Safe to call
+   * more than once; start() waits for it. Rejects if the model will not load.
+   */
+  prepare(): Promise<HandTracker> {
+    this.preparing ??= (async () => {
+      this.trackerState = 'loading';
+      try {
+        const tracker = await createHandTracker(this.numHands);
+        if (this.stopped) {
+          tracker.landmarker.close();
+          throw new Error('stopped');
+        }
+        this.trackerState = 'warming-up';
+        // Let the page paint "warming up" before the call blocks the main thread.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (this.stopped) {
+          tracker.landmarker.close();
+          throw new Error('stopped');
+        }
+        this.warmupMs = warmUp(tracker);
+        this.tracker = tracker;
+        this.trackerState = 'warm';
+        return tracker;
+      } catch (error) {
+        this.trackerState = 'failed';
+        throw error;
+      }
+    })();
+    return this.preparing;
+  }
+
   /** Starts camera and model. Resolves to the final state; it never throws. */
   async start(): Promise<WebcamState> {
+    // The model loads while the camera permission is asked; its failure is reported below.
+    this.prepare().catch(() => {});
     if (!navigator.mediaDevices?.getUserMedia) {
       return this.fail('no-camera', 'This page cannot use a camera here (it needs https or localhost).');
     }
@@ -77,7 +118,7 @@ export class WebcamSource implements InputSource {
 
     this.state = 'loading-model';
     try {
-      this.tracker = await createHandTracker(1);
+      await this.prepare();
     } catch (error) {
       return this.fail('error', `The hand tracking model would not load: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -102,6 +143,9 @@ export class WebcamSource implements InputSource {
     return {
       state: this.state,
       message: this.message,
+      numHands: this.numHands,
+      trackerState: this.trackerState,
+      warmupMs: this.warmupMs,
       delegate: this.tracker?.delegate ?? null,
       gpuError: this.tracker?.gpuError ?? null,
       modelLoadMs: this.tracker?.createMs ?? null,

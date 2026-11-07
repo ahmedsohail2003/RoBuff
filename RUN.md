@@ -20,11 +20,14 @@ Add `?input=` to the URL:
 
 | URL | What drives the arm |
 | --- | --- |
-| http://localhost:5173/ | Mouse (the default). Move to steer, W/S to reach, G to open or close the grip. Dragging orbits the camera. |
-| http://localhost:5173/?input=webcam | Your hand on the webcam. Pinch to grip. If the camera is missing or refused, the page says so and offers the mouse. |
+| http://localhost:5173/ | The webcam if the browser lists a camera, else the mouse. |
+| http://localhost:5173/?input=webcam | Your hand on the webcam. A start screen says why the camera is wanted and warms up the hand model; press "Use camera" (or "Use mouse instead"). Pinch to grip. If the camera is missing or refused, the page says so and offers the mouse. |
+| http://localhost:5173/?input=mouse | Mouse. Move to steer, W/S to reach, G to open or close the grip. Dragging orbits the camera. |
 | http://localhost:5173/?input=synthetic | A scripted hand that picks up the cube by itself. Used by the tests. |
 
-`?speed=N` runs N simulated seconds per wall second (0.1 to 8). For example `?input=synthetic&speed=3`.
+`?speed=N` runs N simulated seconds per wall second (0.1 to 8). For example `?input=synthetic&speed=3`. `?hands=2` makes the hand model look for two hands (default 1).
+
+**Space stops the arm**: no command reaches it until you press Resume on screen; every joint and the jaw hold where they were.
 
 ## Keys
 
