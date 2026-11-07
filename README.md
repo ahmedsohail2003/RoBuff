@@ -14,7 +14,7 @@ This repository is public, including its commit history. Git ignores the locatio
 
 Everything else can be committed and published.
 
-Private files exist only on the computer that holds them. Git does not back them up or share them with teammates.
+This repo does not back up or share private files. The top-level `private/` folder is backed up separately to a private repo. Other private files exist only on the computer that holds them.
 
 To check a file before you commit it, run this command. If it prints a matching rule, the file is private. If it prints nothing, the file can be published.
 
