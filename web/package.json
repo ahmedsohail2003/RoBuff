@@ -1,0 +1,33 @@
+{
+  "name": "hand-arm-sim",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "build:test": "vite build --mode test --outDir dist-test",
+    "vendor": "node scripts/vendor-mediapipe.mjs",
+    "postinstall": "node scripts/vendor-mediapipe.mjs",
+    "predev": "node scripts/vendor-mediapipe.mjs",
+    "prebuild": "node scripts/vendor-mediapipe.mjs",
+    "prebuild:test": "node scripts/vendor-mediapipe.mjs",
+    "smoke": "echo npm run smoke is a placeholder: the pre-judging smoke test is not written yet && exit 1"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.2",
+    "@mujoco/mujoco": "4.0.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "22.20.5",
+    "@types/three": "0.187.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.6",
+    "vitest": "5.1.0"
+  }
+}
