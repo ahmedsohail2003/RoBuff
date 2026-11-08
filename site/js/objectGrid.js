@@ -1,0 +1,92 @@
+// Object grid: one tile per request tested end to end in the browser. One tile is highlighted on a timer;
+// hover or keyboard focus takes over. The stats row shows that object's receipt and lift-test values.
+
+import { OBJECTS } from './data.js';
+
+const GLYPHS = {
+  asteroid: '<svg viewBox="0 0 40 40"><path d="M9 24l3-11 10-5 9 4 3 10-5 9-11 2-7-4z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  fragment: '<svg viewBox="0 0 40 40"><path d="M8 30l9-21 15 9-6 14z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  shard: '<svg viewBox="0 0 40 40"><path d="M14 33l-3-14 8-13 9 10-3 15z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  panel: '<svg viewBox="0 0 40 40"><g fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="13" width="28" height="14"/><path d="M15 13v14M25 13v14"/></g></svg>',
+  dish: '<svg viewBox="0 0 40 40"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 16a13 9 0 0 0 26 0z"/><path d="M20 25v8M14 33h12"/></g></svg>',
+};
+
+export function mountObjectGrid() {
+  const host = document.getElementById('tiles');
+  if (!host) return;
+  const st = {
+    name: document.getElementById('st-name'),
+    note: document.getElementById('st-note'),
+    width: document.getElementById('st-width'),
+    mass: document.getElementById('st-mass'),
+    lift: document.getElementById('st-lift'),
+    verdict: document.getElementById('st-verdict'),
+  };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  const tiles = OBJECTS.map((o, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tile' + (o.verdict === 'REFUSED' ? ' refused' : '');
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', `${o.name}: width ${o.width}, mass ${o.mass}, lift test ${o.lift}, ${o.verdict}`);
+    b.innerHTML =
+      `<span class="no">${String(i + 1).padStart(2, '0')}</span>` +
+      `<span class="glyph" aria-hidden="true" style="transform:translate(-50%,-50%) rotate(${(i * 47) % 360}deg)">${GLYPHS[o.kind] || GLYPHS.asteroid}</span>` +
+      `<span class="name" aria-hidden="true">${o.name}</span><span class="st" aria-hidden="true"></span>`;
+    host.appendChild(b);
+    return b;
+  });
+
+  let active = -1;
+  let timer = 0;
+  let paused = false;
+
+  function select(i) {
+    if (active >= 0) {
+      tiles[active].classList.remove('active');
+      tiles[active].setAttribute('aria-pressed', 'false');
+    }
+    active = i;
+    tiles[i].classList.add('active');
+    tiles[i].setAttribute('aria-pressed', 'true');
+    const o = OBJECTS[i];
+    st.name.textContent = o.name;
+    st.note.textContent = o.note;
+    st.width.innerHTML = o.asked ? `${o.width}<small>${o.asked}</small>` : o.width;
+    st.mass.textContent = o.mass;
+    st.lift.textContent = o.lift;
+    st.verdict.textContent = o.verdict;
+    st.verdict.dataset.v = o.verdict.toLowerCase();
+  }
+
+  function startTimer() {
+    clearInterval(timer);
+    if (reduce.matches) return;
+    timer = setInterval(() => {
+      if (!paused) select((active + 1) % tiles.length);
+    }, 2200);
+  }
+
+  tiles.forEach((t, i) => {
+    t.addEventListener('pointerenter', () => {
+      paused = true;
+      select(i);
+    });
+    t.addEventListener('focus', () => {
+      paused = true;
+      select(i);
+    });
+    t.addEventListener('click', () => select(i));
+  });
+  host.addEventListener('pointerleave', () => (paused = false));
+  host.addEventListener('focusout', (e) => {
+    if (!host.contains(e.relatedTarget)) paused = false;
+  });
+
+  select(0);
+  new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) startTimer();
+    else clearInterval(timer);
+  }).observe(host);
+}

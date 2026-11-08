@@ -1,0 +1,1323 @@
+{
+  "meta": {
+    "about": "Every number that appears on the Aftergrip project page, with what it measures and where it came from. Written by the site copywriter on 2026-11-07. Paths are relative to the repo root. PROGRESS = private/.autopilot/PROGRESS.md (only VERIFIED rows and verdict lines used for results). PROGRESS keeps growing, so it is cited by row label (step | owner | clock), verdict line (step VERIFIED clock) or section heading, never by line number. EVID = private/.autopilot/evidence/.",
+    "status_values": {
+      "verified": "a test result inside a milestone that a separate verifier re-ran and marked VERIFIED in PROGRESS",
+      "measured-builder": "measured by a builder inside a milestone that was later VERIFIED, but this exact number was not re-run by the verifier; used only as a stated limit",
+      "sourced": "from a cited outside source (NASA, JPL, DLR, papers)",
+      "computed": "calculated by a command run for this page (private/.autopilot/site/calc-facts.mjs; its output is in private/.autopilot/site/calc-facts.out.txt)",
+      "design": "a design value or limit written in the app's code, with the code's own stated basis",
+      "planned": "a rule or setting for work that is in progress; not a result"
+    },
+    "rule": "The page never shows a number that is not in this file. The ghost-arm result is 'not measured yet' (0 logged trials).",
+    "fixer_round_2": "2026-11-07: Gemini corrected from 'offline mode, no call made' to the live gate result (gemini_gate_valid_specs, gemini_gate_median_ms, gemini_model_version); the 7 object-grid requests stay as run on the offline mock (S5 VERIFIED 17:52 EST, before the key was supplied at about 19:30). After the copy trim these facts are no longer shown on the page and are kept only for the record: ik_error_min_mm, ik_error_max_mm, rotex_delay_s, study_size_people, pinch_confirm_frames, mujoco_version.",
+    "fixer_round_3": "2026-11-07 final fix: every PROGRESS citation rewritten from line numbers to row labels; unit tests 182 -> 201 (M4f VERIFIED 20:03, the newest full run); added unit_test_files, tracking_other_runs_ms, sheridan_year, bejczy_year, pick_clip_rise_mm, pick_clip_mass_g; ice refusal quoted at 9.81 (Earth) as the S5 rows say; Gemini 5/5 now carries its caveat (format only; sizes did not always match)."
+  },
+  "facts": [
+    {
+      "id": "moon_distance_km",
+      "value": 384400,
+      "unit": "km",
+      "measures": "mean Earth-Moon distance",
+      "denominator": null,
+      "status": "sourced",
+      "source": "NASA NSSDC Moon fact sheet (nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html), retrieved 2026-11-07; cited at README.md line 81 and private/.autopilot/research/story-and-prior-art.md line 38"
+    },
+    {
+      "id": "light_oneway_s",
+      "value": 1.28,
+      "unit": "s",
+      "measures": "light travel time Earth to Moon, one way (1.2822 s unrounded)",
+      "denominator": null,
+      "status": "computed",
+      "source": "command: node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'one way s 1.2822' (384,400 km / 299,792.458 km/s); same figure in HOW_IT_WORKS.md '## Delay and ghost' and PROGRESS row 'M9a | builder (Track B) | 18:16 EST'"
+    },
+    {
+      "id": "light_roundtrip_s",
+      "value": 2.56,
+      "unit": "s",
+      "measures": "light travel time Earth-Moon-Earth (2.5644 s unrounded): the delay between a pinch and seeing the arm grip",
+      "denominator": null,
+      "status": "computed",
+      "source": "command: node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'round trip s 2.5644'; README.md line 81"
+    },
+    {
+      "id": "louca_delay_s",
+      "value": 2.6,
+      "unit": "s",
+      "measures": "largest delay in the 2024 University of Bristol robot-arm study, where performance got worse on every measure recorded",
+      "denominator": null,
+      "status": "sourced",
+      "source": "Louca et al. 2024, 'Impact of Haptic Feedback in High Latency Teleoperation for Space Applications', ACM Transactions on Human-Robot Interaction, doi:10.1145/3651993 (University of Bristol; abstract retrieved 2026-11-07); README.md '## Who this is for'; private/.autopilot/research/track-delay-predictive-display-evidence.md"
+    },
+    {
+      "id": "rotex_year",
+      "value": 1993,
+      "unit": "year",
+      "measures": "year DLR flew predictive graphics on its ROTEX space arm (Spacelab D2); the idea came from MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990) work",
+      "denominator": null,
+      "status": "sourced",
+      "source": "DLR, dlr.de/en/rm/research/robotic-systems/history/rotex-1988-1993 (retrieved 2026-11-07); story-and-prior-art.md line 40; README.md line 83"
+    },
+    {
+      "id": "rotex_delay_s",
+      "value": "5-7",
+      "unit": "s",
+      "measures": "delay the ROTEX predictive graphics compensated",
+      "denominator": null,
+      "status": "sourced",
+      "source": "DLR ROTEX history page; story-and-prior-art.md line 40; README.md line 83"
+    },
+    {
+      "id": "richter_with_display_s",
+      "value": 49.2,
+      "unit": "s",
+      "measures": "task completion time with a predictive display at 1 s delay",
+      "denominator": "against 60.6 s without the display",
+      "status": "sourced",
+      "source": "Richter et al. 2019, IEEE ICRA, arxiv.org/abs/1809.08627; README.md line 83; PLAN.md section 2"
+    },
+    {
+      "id": "richter_without_display_s",
+      "value": 60.6,
+      "unit": "s",
+      "measures": "task completion time without a predictive display at 1 s delay",
+      "denominator": null,
+      "status": "sourced",
+      "source": "Richter et al. 2019; README.md line 83"
+    },
+    {
+      "id": "study_size_people",
+      "value": "4-20",
+      "unit": "people",
+      "measures": "typical number of participants in the published predictive-display studies",
+      "denominator": null,
+      "status": "sourced",
+      "source": "README.md line 83; PLAN.md section 2"
+    },
+    {
+      "id": "hackathon_scan_entries",
+      "value": 755,
+      "unit": "entries",
+      "measures": "saved UB Hacking entries keyword-scanned (full text for Fall 2025, titles and taglines only for older editions, so the scan can miss entries); none found putting an arm in a physics simulation, checking generated objects for pickup, or modelling light delay",
+      "denominator": "0 of 755 found",
+      "status": "sourced",
+      "source": "README.md '## Who this is for' ('full text for Fall 2025, titles and taglines for older editions, so the scan can miss entries'); private/.autopilot/research/track-ub-hacking-past-winners.md ('Method' paragraph); PLAN.md section 2"
+    },
+    {
+      "id": "hand_landmarks",
+      "value": 21,
+      "unit": "points",
+      "measures": "hand points MediaPipe's hand landmarker returns per hand",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('21 landmarks'); HOW_IT_WORKS.md '## Hand to arm'"
+    },
+    {
+      "id": "tracking_median_ms",
+      "value": 11,
+      "unit": "ms",
+      "measures": "median hand-tracking time per frame, fake camera, headless Chrome on the RTX 4050",
+      "denominator": "120 timed frames (max 17.5 ms)",
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' (fake camera: 'median inference 11 ms (max 17.5, 120 samples, WebGL on RTX 4050)') and PROGRESS verdict 'S3 VERIFIED 16:58 EST' ('median 11 ms')"
+    },
+    {
+      "id": "tracking_max_ms",
+      "value": 17.5,
+      "unit": "ms",
+      "measures": "slowest hand-tracking frame in the same run",
+      "denominator": "120 timed frames",
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('max 17.5, 120 samples, WebGL on RTX 4050')"
+    },
+    {
+      "id": "frames_with_hand",
+      "value": 123,
+      "unit": "frames",
+      "measures": "fake-camera frames in which a hand was found",
+      "denominator": "123 frames",
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('123/123 frames with hand') and PROGRESS verdict 'S3 VERIFIED 16:58 EST'"
+    },
+    {
+      "id": "frames_total",
+      "value": 123,
+      "unit": "frames",
+      "measures": "fake-camera frames processed in that run",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST'"
+    },
+    {
+      "id": "hand_confidence",
+      "value": 0.959,
+      "unit": "score 0-1",
+      "measures": "hand-detection confidence on the fake camera",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('confidence 0.959')"
+    },
+    {
+      "id": "first_hand_s",
+      "value": 14.8,
+      "unit": "s",
+      "measures": "page load to first confident hand on a cold start (model warm-up)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('14.8 s to first confident hand')"
+    },
+    {
+      "id": "jitter_before_mm",
+      "value": 5.39,
+      "unit": "mm",
+      "measures": "arm-target jitter from a still hand before the One Euro filter (unit test with a simulated still hand, not a camera)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | builder | 16:33 EST' ('mapped world jitter 5.39 -> 1.80 mm'), a test in the suite PROGRESS row 'S3 | verifier | 16:58 EST' re-ran 91/91; HOW_IT_WORKS.md '## Hand to arm'"
+    },
+    {
+      "id": "jitter_after_mm",
+      "value": 1.8,
+      "unit": "mm",
+      "measures": "arm-target jitter after the One Euro filter (unit test with a simulated still hand, not a camera)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | builder | 16:33 EST' ('5.39 -> 1.80 mm') and PROGRESS row 'S3 | verifier | 16:58 EST'; HOW_IT_WORKS.md '## Hand to arm'"
+    },
+    {
+      "id": "pinch_close",
+      "value": 0.25,
+      "unit": "ratio",
+      "measures": "pinch ratio (thumb tip to index tip / palm size) below which the jaw closes; set from a sample photo, not a real pinch",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S3: pinch thresholds moved ...' ('close < 0.25, open > 0.38'); HOW_IT_WORKS.md '## Hand to arm'"
+    },
+    {
+      "id": "pinch_open",
+      "value": 0.38,
+      "unit": "ratio",
+      "measures": "pinch ratio above which the jaw opens",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S3: pinch thresholds moved ...'; HOW_IT_WORKS.md '## Hand to arm'"
+    },
+    {
+      "id": "pinch_confirm_frames",
+      "value": 2,
+      "unit": "frames",
+      "measures": "frames that must agree before the grip changes or a lost hand is re-accepted",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S3: pinch thresholds moved ...' ('confirmed over 2 frames'); HOW_IT_WORKS.md '## Hand to arm' and '## Safety'"
+    },
+    {
+      "id": "target_speed_limit_m_s",
+      "value": 0.25,
+      "unit": "m/s",
+      "measures": "fastest the arm target may move, so a jumpy hand reading cannot fling the arm",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS row 'S3 | builder | 16:33 EST' ('arm target step stays <= 0.25 m/s x dt') and PROGRESS '## Executor deviations', entry 'S3: lost hand ...'; HOW_IT_WORKS.md '## Safety'"
+    },
+    {
+      "id": "ik_error_min_mm",
+      "value": 0.09,
+      "unit": "mm",
+      "measures": "smallest inverse-kinematics landing error on reachable test targets",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S2 | builder | 16:06 EST' ('reachable targets 0.09-1.85 mm error') and PROGRESS verdict 'S2 VERIFIED 16:12:46 EST' ('IK reachable <2 mm')"
+    },
+    {
+      "id": "ik_error_max_mm",
+      "value": 1.85,
+      "unit": "mm",
+      "measures": "largest inverse-kinematics landing error on reachable test targets",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S2 | builder | 16:06 EST' and PROGRESS verdict 'S2 VERIFIED 16:12:46 EST'"
+    },
+    {
+      "id": "physics_fps",
+      "value": 240,
+      "unit": "frames/s",
+      "measures": "page frame rate (rendered frames per second) in headless Chrome on the RTX 4050; not the physics rate, which is physics_steps_per_s",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('240 fps (>=50) on RTX 4050', headless Chrome); EVID m3-verify-r0/s5-gravity.json fps.fps = 240.02"
+    },
+    {
+      "id": "physics_steps_per_s",
+      "value": 500,
+      "unit": "steps/s",
+      "measures": "MuJoCo physics steps per second in the browser (500.3 measured; timestep 0.002 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'M0 | fixer (Track A, round 1) | 17:50 EST' ('240.1 fps, 500.3 physics steps/s'), M0 later VERIFIED (PROGRESS verdict 'M0 VERIFIED 18:42 EST'); site/assets/motion/pick.json meta.timestep_s 0.002"
+    },
+    {
+      "id": "unit_tests_passed",
+      "value": 201,
+      "unit": "tests",
+      "measures": "unit tests passed in the newest full verified run (npm test, Vitest), all of them",
+      "denominator": "201 of 201, in 31 test files",
+      "status": "verified",
+      "source": "PROGRESS verdict 'M4f VERIFIED 20:03 EST' ('npm test 201/201 in 31 files'); same count in PROGRESS verdict 'M9b VERIFIED 19:51 EST' (smoke: '201 unit tests')"
+    },
+    {
+      "id": "pick_rise_mm",
+      "value": 78.4,
+      "unit": "mm",
+      "measures": "how high the 20 g test cube rose in a scripted-hand pick through the same hand-to-arm path a webcam uses (78.41 mm)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('rise 78.41 mm') and PROGRESS verdict 'S3 VERIFIED 16:58 EST'; EVID s3-synthetic-pick.json maxRiseMm 78.41"
+    },
+    {
+      "id": "pick_held_s",
+      "value": 5.73,
+      "unit": "s",
+      "measures": "time the cube stayed held by friction in that pick",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('held 5.73 s') and PROGRESS verdict 'S3 VERIFIED 16:58 EST'; EVID s3-synthetic-pick.json heldS 5.73"
+    },
+    {
+      "id": "pick_penetration_mm",
+      "value": 0.054,
+      "unit": "mm",
+      "measures": "how far the jaw pads sank into the cube while holding it",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('penetration 0.054 mm'); EVID s3-synthetic-pick.json heldPenetrationMm 0.054"
+    },
+    {
+      "id": "pick_fall_s",
+      "value": 0.37,
+      "unit": "s",
+      "measures": "time from the jaw opening to the cube falling (0.366 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'S3 VERIFIED 16:58 EST' ('fell 0.366 s')"
+    },
+    {
+      "id": "cube_mass_g",
+      "value": 20,
+      "unit": "g",
+      "measures": "mass of the arena test cube",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S2: actuators and contacts are the model's own values ...' ('cube 20 g'); HOW_IT_WORKS.md '## Friction grip'"
+    },
+    {
+      "id": "repeat_picks_passed",
+      "value": 5,
+      "unit": "picks",
+      "measures": "scripted picks that passed from the same reset start (shows determinism, not robustness)",
+      "denominator": "5 attempts",
+      "status": "verified",
+      "source": "EVID s2-repeat.json (successes 5, attempts 5); PROGRESS row 'S2 | builder | 16:06 EST' ('Repeat from reset -> successes/5 -> 5/5') and PROGRESS verdict 'S2 VERIFIED 16:12:46 EST' (Playwright s2-pick 2/2, which includes the repeat test)"
+    },
+    {
+      "id": "positions_passed",
+      "value": 6,
+      "unit": "positions",
+      "measures": "cube positions where a scripted pick passed; the 3 failures were 8-12 cm off the arm's centre line",
+      "denominator": "9 positions",
+      "status": "measured-builder",
+      "source": "PROGRESS row 'S2 | builder | 16:06 EST' ('Extra sweep over 9 cube positions in Node -> 6/9') and PROGRESS '## Executor deviations', entry 'S2: limitation. The jaw heading follows the line from the base ...'; EVID s2-vary-positions.txt. S2 is VERIFIED (PROGRESS verdict 'S2 VERIFIED 16:12:46 EST'); the sweep itself was not re-run by the verifier. Shown as a limit."
+    },
+    {
+      "id": "positions_failed_offset_cm",
+      "value": "8-12",
+      "unit": "cm",
+      "measures": "how far off the arm's centre line the 3 failed pick positions were",
+      "denominator": "3 of 9 positions",
+      "status": "measured-builder",
+      "source": "PROGRESS row 'S2 | builder | 16:06 EST' ('the 3 failures are 8-12 cm off the arm's centre line') and PROGRESS '## Executor deviations', entry 'S2: limitation. The jaw heading follows the line from the base ...'"
+    },
+    {
+      "id": "pad_friction",
+      "value": 1,
+      "unit": "mu",
+      "measures": "jaw-pad friction in the public arm model, not tuned",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S2: actuators and contacts are the model's own values ...' ('pad friction 1'); HOW_IT_WORKS.md '## Friction grip'"
+    },
+    {
+      "id": "servo_torque_limit_nm",
+      "value": 3.5,
+      "unit": "N m",
+      "measures": "actuator torque limit in the public model",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S2: actuators and contacts are the model's own values ...' ('3.5 N m limit'); HOW_IT_WORKS.md '## Friction grip'"
+    },
+    {
+      "id": "jaw_open_min_mm",
+      "value": 10,
+      "unit": "mm",
+      "measures": "smallest object width the simulated jaw can grip (hard limit, measured in MuJoCo)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 7 (W_MIN 0.01 m); HOW_IT_WORKS.md line 19"
+    },
+    {
+      "id": "jaw_open_max_mm",
+      "value": 70,
+      "unit": "mm",
+      "measures": "largest object width the simulated jaw can grip (hard limit)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 9 (W_MAX 0.07 m); HOW_IT_WORKS.md line 19"
+    },
+    {
+      "id": "hand_width_min_mm",
+      "value": 15,
+      "unit": "mm",
+      "measures": "smallest width allowed when flying the arm by hand",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 20 (HAND_W_MIN 0.015 m)"
+    },
+    {
+      "id": "hand_width_max_mm",
+      "value": 55,
+      "unit": "mm",
+      "measures": "largest width allowed when flying the arm by hand; oversized requests are rescaled to this",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 18 (HAND_W_MAX 0.055 m)"
+    },
+    {
+      "id": "hand_mass_max_g",
+      "value": 200,
+      "unit": "g",
+      "measures": "heaviest object allowed when flying by hand (simulated arm; a real arm's payload is unverified)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 22 (HAND_M_MAX 0.2 kg)"
+    },
+    {
+      "id": "arm_mass_max_g",
+      "value": 300,
+      "unit": "g",
+      "measures": "hard mass limit of the simulated arm (a 30 mm cube rose 76.5 mm at 0.3 kg in MuJoCo)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 12-13 (M_MAX 0.3 kg)"
+    },
+    {
+      "id": "squeeze_n",
+      "value": 50,
+      "unit": "N",
+      "measures": "approximate jaw squeeze force, inferred from the 3.5 N m torque limit and lever",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 14-15 (CLAMP_N 50); HOW_IT_WORKS.md line 19"
+    },
+    {
+      "id": "guardrail_checks",
+      "value": 7,
+      "unit": "checks",
+      "measures": "checks run before an object may appear: mesh sanity, convex hull, jaw angle, scale, mass, friction, grip height",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' (stages REQUEST..GRIP_OK = SANITY, HULL, YAW, SCALE, MASS, FRICTION, GRIP); HOW_IT_WORKS.md '## Guardrail and lift test'"
+    },
+    {
+      "id": "lift_test_height_mm",
+      "value": 80,
+      "unit": "mm",
+      "measures": "how high the headless lift test raises the object",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 56 (LIFT_HEIGHT 0.08 m)"
+    },
+    {
+      "id": "lift_pass_rise_mm",
+      "value": 48,
+      "unit": "mm",
+      "measures": "minimum rise at the end of the hold for a lift test to pass (60% of 80 mm)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts (LIFT_PASS_RISE = 0.6 x LIFT_HEIGHT); PROGRESS row 'S5 | verifier | 17:52 EST'"
+    },
+    {
+      "id": "objects_tested_browser",
+      "value": 7,
+      "unit": "requests",
+      "measures": "object requests run end to end in the browser test (Bennu-like sample, S-type chip, CubeSat panel, comms dish, size of Texas, solid iron 60 mm, comet ice shard)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((a)-(d) plus browser times for 5 presets); EVID s5-timings.json (5 entries)"
+    },
+    {
+      "id": "objects_lifted",
+      "value": 5,
+      "unit": "objects",
+      "measures": "requested objects that passed the simulated lift test (4 PASS as asked, 1 ADJUSTED to a model)",
+      "denominator": "7 requests",
+      "status": "verified",
+      "source": "EVID s5-timings.json (bennu PASS, s-type-chip PASS, cubesat-panel PASS, comms-dish PASS, Texas ADJUSTED); PROGRESS row 'S5 | verifier | 17:52 EST'"
+    },
+    {
+      "id": "objects_refused",
+      "value": 2,
+      "unit": "objects",
+      "measures": "requests refused with numbers before they appeared (solid iron too heavy; comet ice shard slips)",
+      "denominator": "7 requests",
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((c) iron TOO_HEAVY and (d) ice SLIPS) and PROGRESS verdict 'S5 VERIFIED 17:52 EST'"
+    },
+    {
+      "id": "bennu_width_mm",
+      "value": 40,
+      "unit": "mm",
+      "measures": "requested width of the Bennu-like C-type sample (33 mm tall)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 28 (preset spec width_mm 40, height_mm 33)"
+    },
+    {
+      "id": "bennu_height_mm",
+      "value": 33,
+      "unit": "mm",
+      "measures": "requested height of the Bennu-like sample",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 28"
+    },
+    {
+      "id": "bennu_jaw_mm",
+      "value": 28,
+      "unit": "mm",
+      "measures": "the sample's narrowest side, where the jaw closes on it (27.8 mm)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json, objects[0] YAW_CHOSEN measured 27.82 mm (PROGRESS verdict 'S4 VERIFIED 16:19 EST' (and the 16:20:20 re-check): gallery JSON regenerates identically)"
+    },
+    {
+      "id": "bennu_hull_cc",
+      "value": 17.9,
+      "unit": "cm3",
+      "measures": "convex-hull volume of the generated Bennu-like sample mesh (17.887 cm3)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json, objects[0] HULL_OK measured 17.887 (S4 VERIFIED)"
+    },
+    {
+      "id": "c_type_density",
+      "value": 1.6,
+      "unit": "g/cm3",
+      "measures": "C-type rock sample density (Bennu returned matrix 1.6 +/- 0.3)",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/materials.ts line 23-24 (JAMS 2025 abstract R5-13 via story-and-prior-art.md line 63)"
+    },
+    {
+      "id": "bennu_mass_g",
+      "value": 29,
+      "unit": "g",
+      "measures": "mass of the Bennu-like sample (17.9 cm3 x 1.6 g/cm3 = 28.6 g)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json objects[0] MASS_OK measured 0.02862 kg; receipt line 'is 29 grams'"
+    },
+    {
+      "id": "bennu_lift_rise_mm",
+      "value": 77.3,
+      "unit": "mm",
+      "measures": "rise of the Bennu-like sample at the end of the hold in the headless lift test (pass needs 48)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ('rise 77.29 mm, held 2.02 s') and PROGRESS verdict 'S5 VERIFIED 17:52 EST' ('Bennu PASS 77.3 mm'); EVID s5-timings.json bennu-sample rise_mm 77.3"
+    },
+    {
+      "id": "bennu_lift_held_s",
+      "value": 2.02,
+      "unit": "s",
+      "measures": "time the sample was held at 48 mm or more in the lift test",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST'; EVID s5-timings.json hold_s 2.02"
+    },
+    {
+      "id": "bennu_recompile_ms",
+      "value": 258.5,
+      "unit": "ms",
+      "measures": "time to rebuild the live physics scene with the sample in it (Chrome) Measured in headless Chrome on the development laptop; the S5 verifier row does not record which GPU Chrome used, and MuJoCo runs as WebAssembly on the CPU.",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' (browser times 'bennu 258.5/551'); EVID s5-timings.json recompile_ms 258.5"
+    },
+    {
+      "id": "bennu_lift_ms",
+      "value": 551,
+      "unit": "ms",
+      "measures": "wall time of the headless lift test for the sample",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ('bennu 258.5/551'); EVID s5-timings.json lift_ms 551"
+    },
+    {
+      "id": "bennu_roll_mm",
+      "value": 18,
+      "unit": "mm",
+      "measures": "how far the sample rolled when set down, before the arm re-aimed",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json objects[0] ROLLS measured 17.88 mm; PROGRESS verdict 'S4 VERIFIED 16:19 EST' (and the 16:20:20 re-check) ('largest roll 17.88 mm')"
+    },
+    {
+      "id": "live_pick_rise_mm",
+      "value": 82.8,
+      "unit": "mm",
+      "measures": "rise of the settled Bennu-like sample when the live arm picked it with the scripted hand (82.84 mm)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((e) 'live S2 pick maxRise 82.84 mm, held 5.77 s') and PROGRESS verdict 'S5 VERIFIED 17:52 EST'"
+    },
+    {
+      "id": "live_pick_held_s",
+      "value": 5.77,
+      "unit": "s",
+      "measures": "time the live arm held the sample by friction",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' and PROGRESS verdict 'S5 VERIFIED 17:52 EST'"
+    },
+    {
+      "id": "chip_width_mm",
+      "value": 30,
+      "unit": "mm",
+      "measures": "requested width of the S-type chip (20 mm tall)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 34"
+    },
+    {
+      "id": "chip_mass_g",
+      "value": 18,
+      "unit": "g",
+      "measures": "mass of the S-type chip at 3.2 g/cm3 (18.2 g)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'S-type chip' MASS_OK 0.01822 kg (seed 25143 matches the preset)"
+    },
+    {
+      "id": "chip_lift_rise_mm",
+      "value": 79.3,
+      "unit": "mm",
+      "measures": "lift-test rise, S-type chip",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s5-timings.json s-type-chip rise_mm 79.3 (the S5 verifier run: its times 218.7/448 ms match PROGRESS row 'S5 | verifier | 17:52 EST')"
+    },
+    {
+      "id": "panel_width_mm",
+      "value": 50,
+      "unit": "mm",
+      "measures": "requested width of the CubeSat solar panel (10 mm tall)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 40"
+    },
+    {
+      "id": "panel_hull_cc",
+      "value": 14.8,
+      "unit": "cm3",
+      "measures": "convex-hull volume of the CubeSat panel mesh (14.786 cm3)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'CubeSat solar panel' HULL_OK 14.786"
+    },
+    {
+      "id": "panel_mass_g",
+      "value": 40,
+      "unit": "g",
+      "measures": "mass of the CubeSat panel in aluminium (39.9 g)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json MASS_OK 0.03992 kg"
+    },
+    {
+      "id": "panel_lift_rise_mm",
+      "value": 78.5,
+      "unit": "mm",
+      "measures": "lift-test rise, CubeSat panel",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s5-timings.json cubesat-panel rise_mm 78.5"
+    },
+    {
+      "id": "dish_width_mm",
+      "value": 48,
+      "unit": "mm",
+      "measures": "requested width of the comms dish (20 mm tall)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 46"
+    },
+    {
+      "id": "dish_mass_g",
+      "value": 59,
+      "unit": "g",
+      "measures": "mass of the comms dish in aluminium (59.1 g)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'Comms dish' MASS_OK 0.05909 kg (seed 7 matches the preset)"
+    },
+    {
+      "id": "dish_lift_rise_mm",
+      "value": 77.6,
+      "unit": "mm",
+      "measures": "lift-test rise, comms dish",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s5-timings.json comms-dish rise_mm 77.6"
+    },
+    {
+      "id": "texas_asked_km",
+      "value": 1200,
+      "unit": "km",
+      "measures": "size the 'asteroid the size of Texas' request was read as (1,200,000,000 mm)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((b) TOO_WIDE quotes about 1,200 km); web/src/objects/mock.ts (Texas preset)"
+    },
+    {
+      "id": "texas_model_mm",
+      "value": 55,
+      "unit": "mm",
+      "measures": "width of the model the guardrail built instead",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((b) Texas rebuilt as a 55 mm model)"
+    },
+    {
+      "id": "texas_model_mass_g",
+      "value": 144,
+      "unit": "g",
+      "measures": "mass of the 55 mm model (144.3 g)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ('144.3 g')"
+    },
+    {
+      "id": "texas_lift_rise_mm",
+      "value": 76.0,
+      "unit": "mm",
+      "measures": "lift-test rise of the 55 mm model (75.98 mm), verdict ADJUSTED",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ('rise 75.98 mm, ADJUSTED') and PROGRESS verdict 'S5 VERIFIED 17:52 EST' ('Texas ADJUSTED 76.0 mm'); EVID s5-timings.json"
+    },
+    {
+      "id": "iron_width_mm",
+      "value": 60,
+      "unit": "mm",
+      "measures": "requested width of 'solid iron, 60 mm'",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((c) solid iron, 60 mm)"
+    },
+    {
+      "id": "iron_mass_g",
+      "value": 562,
+      "unit": "g",
+      "measures": "mass of the solid iron request; refused as too heavy, never spawned",
+      "denominator": "limit 200 g (hand-flown)",
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((c) 'TOO_HEAVY 562 grams, NOT_SPAWNED') and PROGRESS verdict 'S5 VERIFIED 17:52 EST'"
+    },
+    {
+      "id": "iron_density",
+      "value": 7.8,
+      "unit": "g/cm3",
+      "measures": "solid iron density",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 68"
+    },
+    {
+      "id": "ice_width_mm",
+      "value": 34,
+      "unit": "mm",
+      "measures": "requested width of the comet ice shard (30 mm tall)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 52"
+    },
+    {
+      "id": "ice_mass_g",
+      "value": 7.9,
+      "unit": "g",
+      "measures": "mass of the comet ice shard",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'Comet ice shard' MASS_OK 0.007917 kg; PROGRESS row 'S5 | fixer (round 1) | 17:47 EST' ('mass is 7.9 g throughout')"
+    },
+    {
+      "id": "ice_angle_deg",
+      "value": 14,
+      "unit": "degrees",
+      "measures": "how far off square the jaw pads meet the shard at best (refusal quoted at 9.81 m/s2, Earth, in the S5 runs)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | fixer (round 1) | 17:47 EST' (SLIPS line: 'My pads meet it 14 degrees off square at best ... plus 0.0016 for its weight at 9.81 m/s2 (Earth)') and PROGRESS row 'S5 | verifier | 17:52 EST' ((d) 'ice SLIPS at 9.81 (Earth), needs 0.26, ice 0.03'); the live app now runs Earth at 9.82 (PROGRESS row 'M3 | builder (Track B) | 18:06 EST': 'ice SLIPS now quotes 9.82 m/s2 (Earth)'); HOW_IT_WORKS.md '## Guardrail and lift test'"
+    },
+    {
+      "id": "ice_friction_needed",
+      "value": 0.26,
+      "unit": "mu",
+      "measures": "friction needed to hold the shard without it being squeezed out (tan 14 deg + weight term)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' ((d) 'needs 0.26, ice 0.03') and PROGRESS verdict 'S5 VERIFIED 17:52 EST'"
+    },
+    {
+      "id": "ice_friction",
+      "value": 0.03,
+      "unit": "mu",
+      "measures": "friction of ice on steel, clean and dry",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/materials.ts line 49-50 (Engineering ToolBox friction table)"
+    },
+    {
+      "id": "s_type_density",
+      "value": 3.2,
+      "unit": "g/cm3",
+      "measures": "S-type rock sample density (Itokawa 3.4, LL chondrites 3.15-3.4)",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/materials.ts line 34-35"
+    },
+    {
+      "id": "ice_density",
+      "value": 0.9,
+      "unit": "g/cm3",
+      "measures": "ice density",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 46"
+    },
+    {
+      "id": "aluminium_density",
+      "value": 2.7,
+      "unit": "g/cm3",
+      "measures": "solid aluminium density",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 57"
+    },
+    {
+      "id": "c_type_friction",
+      "value": 0.6,
+      "unit": "mu",
+      "measures": "C-type rock friction (a design value, labelled as such in the app)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 27-28"
+    },
+    {
+      "id": "s_type_friction",
+      "value": 0.7,
+      "unit": "mu",
+      "measures": "S-type rock friction (design value)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 38-39"
+    },
+    {
+      "id": "aluminium_friction",
+      "value": 0.47,
+      "unit": "mu",
+      "measures": "aluminium on mild steel, kinetic",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/materials.ts line 60-61 (Engineering ToolBox)"
+    },
+    {
+      "id": "iron_friction",
+      "value": 0.6,
+      "unit": "mu",
+      "measures": "iron friction (design value)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/materials.ts line 71-72"
+    },
+    {
+      "id": "recompile_ms_range",
+      "value": "210.8-258.5",
+      "unit": "ms",
+      "measures": "time to rebuild the live scene with a new object, 5 presets in Chrome Measured in headless Chrome on the development laptop; the S5 verifier row does not record which GPU Chrome used, and MuJoCo runs as WebAssembly on the CPU.",
+      "denominator": "5 presets",
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' (browser times: recompile 210.8 to 258.5 ms over the 5 presets)"
+    },
+    {
+      "id": "lift_ms_range",
+      "value": "399-551",
+      "unit": "ms",
+      "measures": "wall time of one headless lift test, 5 presets in Chrome Measured in headless Chrome on the development laptop; the S5 verifier row does not record which GPU Chrome used, and MuJoCo runs as WebAssembly on the CPU.",
+      "denominator": "5 presets",
+      "status": "verified",
+      "source": "PROGRESS row 'S5 | verifier | 17:52 EST' (browser times: lift test 399 to 551 ms over the 5 presets)"
+    },
+    {
+      "id": "g_earth",
+      "value": 9.82,
+      "unit": "m/s2",
+      "measures": "Earth surface gravity used in the sim",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/limits.ts line 65; NASA NSSDC Earth fact sheet (story-and-prior-art.md line 52)"
+    },
+    {
+      "id": "g_mars",
+      "value": 3.73,
+      "unit": "m/s2",
+      "measures": "Mars surface gravity",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/limits.ts line 66; NASA NSSDC Mars fact sheet (story-and-prior-art.md line 53)"
+    },
+    {
+      "id": "g_moon",
+      "value": 1.62,
+      "unit": "m/s2",
+      "measures": "Moon surface gravity",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/objects/limits.ts line 67; NASA NSSDC Moon fact sheet (story-and-prior-art.md line 54)"
+    },
+    {
+      "id": "g_bennu",
+      "value": 8.3e-05,
+      "unit": "m/s2",
+      "measures": "Bennu surface gravity, GM / r^2, spin ignored (8.335e-5 unrounded)",
+      "denominator": null,
+      "status": "computed",
+      "source": "web/src/objects/limits.ts line 68 (8.3e-5); web/src/sim/gravity.ts line 13-16 (JPL SBDB GM 4.8904 m3/s2, diameter 484.44 m); command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'bennu g 8.335e-5'"
+    },
+    {
+      "id": "g_orbit",
+      "value": 0,
+      "unit": "m/s2",
+      "measures": "gravity in the sim's orbit setting",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 69"
+    },
+    {
+      "id": "bennu_gm",
+      "value": 4.8904,
+      "unit": "m3/s2",
+      "measures": "Bennu's GM from JPL SBDB",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/sim/gravity.ts line 13"
+    },
+    {
+      "id": "bennu_diameter_m",
+      "value": 484.44,
+      "unit": "m",
+      "measures": "Bennu's mean diameter from JPL SBDB",
+      "denominator": null,
+      "status": "sourced",
+      "source": "web/src/sim/gravity.ts line 14"
+    },
+    {
+      "id": "bennu_escape_m_s",
+      "value": 0.2,
+      "unit": "m/s",
+      "measures": "Bennu escape speed, sqrt(2GM/r), spin ignored (0.201)",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'escape m/s 0.201'; web/src/sim/gravity.ts; PROGRESS row 'M3 | builder (Track B) | 18:06 EST' ('escape 0.20 m/s from GM 4.8904 and diameter 484.44')"
+    },
+    {
+      "id": "earth_bennu_ratio",
+      "value": 118000,
+      "unit": "x",
+      "measures": "how many times stronger Earth's surface gravity is than Bennu's (117,811)",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'earth/bennu ratio 117811'; story-and-prior-art.md line 58 ('about 118,000 times')"
+    },
+    {
+      "id": "drop_height_m",
+      "value": 0.1,
+      "unit": "m",
+      "measures": "release height of the gravity drop test",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST'"
+    },
+    {
+      "id": "moon_drop_s",
+      "value": 0.354,
+      "unit": "s",
+      "measures": "time for a cube released 0.10 m up to touch the floor at Moon gravity (theory 0.351 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('Moon drop floor contact 0.354 s'); EVID m3-verify-r0/s5-gravity.json moon.floor_contact_s 0.354"
+    },
+    {
+      "id": "moon_drop_theory_s",
+      "value": 0.351,
+      "unit": "s",
+      "measures": "sqrt(2h/g) for 0.10 m at 1.62 m/s2",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'moon drop 0.10 m theory s 0.3514'"
+    },
+    {
+      "id": "earth_drop_s",
+      "value": 0.144,
+      "unit": "s",
+      "measures": "same drop at Earth gravity (theory 0.143 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('Earth 0.144 s'); EVID m3-verify-r0/s5-gravity.json earth.floor_contact_s 0.144"
+    },
+    {
+      "id": "earth_drop_theory_s",
+      "value": 0.143,
+      "unit": "s",
+      "measures": "sqrt(2h/g) for 0.10 m at 9.82 m/s2",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'earth 0.1427'"
+    },
+    {
+      "id": "bennu_height_after_5s_m",
+      "value": 0.09896,
+      "unit": "m",
+      "measures": "height of the same cube 5 s after release at Bennu gravity (it had fallen about 1 mm)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('Bennu end height 0.09896 m'); EVID m3-verify-r0/s5-gravity.json bennu.end_height_m 0.09896"
+    },
+    {
+      "id": "stars",
+      "value": 8000,
+      "unit": "points",
+      "measures": "stars in the deep-space backdrop, drawn in 1 draw call",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('8000 stars in 1 draw call')"
+    },
+    {
+      "id": "bennu_tap_artefact_mm",
+      "value": 46.9,
+      "unit": "mm",
+      "measures": "how far a 5 cm/s sideways push lifted a resting cube at Bennu gravity: a solver artefact, not real physics (Moon 0.044 mm, Earth 0)",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "EVID m3/m3-tap.txt ('bennu velocity tap 5 cm/s: max rise 46.928 mm'); PROGRESS row 'M3 | builder (Track B) | 18:06 EST' ('46.928 mm Bennu'); M3 is VERIFIED (PROGRESS verdict 'M3 VERIFIED 18:09 EST': 'LOW_GRAVITY receipt present'). Shown as a limit."
+    },
+    {
+      "id": "low_gravity_warning_below",
+      "value": 0.1,
+      "unit": "m/s2",
+      "measures": "gravity below which every receipt carries a contact warning",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/sim/gravity.ts line 20 (LOW_GRAVITY_NOTE_BELOW 0.1)"
+    },
+    {
+      "id": "delay_measured_oneway_s",
+      "value": 1.28,
+      "unit": "s",
+      "measures": "measured lag of each delay line in Moon mode, scripted hand in the simulation: commands reached the true arm 1.28 s late and the view reached the screen another 1.28 s later (ghost to screen 2.56 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'M4 | builder (Track A) | 19:05 EST' (e2e/s6-delay-ghost.spec.ts: 'lag ghost->truth 1.28 s, truth->seen 1.28 s, ghost->seen 2.56 s') and PROGRESS verdict 'M4 VERIFIED 19:13 EST' ('DELAY_STEP step at 1.000 s reached truth at 2.29 s' = 1.000 + 1.28 + one 0.01 s tick)"
+    },
+    {
+      "id": "ghost_trials_logged",
+      "value": 0,
+      "unit": "trials",
+      "measures": "logged ghost-on/ghost-off trials with a person so far: the ghost's benefit is not measured yet (the delay, the ghost and the trial logger are built and tested with a scripted hand)",
+      "denominator": null,
+      "status": "planned",
+      "source": "README.md line 69 ('ghost benefit: not tested (0 logged trials)')"
+    },
+    {
+      "id": "ghost_pass_ratio",
+      "value": 0.75,
+      "unit": "ratio",
+      "measures": "pass rule written before any data: ghost-on median time must be at most 0.75 x ghost-off median, with no fewer successes",
+      "denominator": null,
+      "status": "planned",
+      "source": "PROGRESS '## Gate rules', first entry (pass rule copied from PLAN.md section 4 M4c at 17:42 EST, before any trial)"
+    },
+    {
+      "id": "ghost_nominal_density",
+      "value": 1.6,
+      "unit": "g/cm3",
+      "measures": "rock density the ghost assumes",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS row 'M4 | builder (Track A) | 19:05 EST' (mismatch: truth 62.1 g, mu 0.6 vs ghost 43.2 g, mu 0.8; 62.1/43.2 = 2.3/1.6) and PROGRESS verdict 'M4 VERIFIED 19:13 EST'; HOW_IT_WORKS.md '## Delay and ghost'"
+    },
+    {
+      "id": "ghost_nominal_friction",
+      "value": 0.8,
+      "unit": "mu",
+      "measures": "rock friction the ghost assumes",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS row 'M4 | builder (Track A) | 19:05 EST' (mismatch: truth 62.1 g, mu 0.6 vs ghost 43.2 g, mu 0.8) and PROGRESS verdict 'M4 VERIFIED 19:13 EST'; HOW_IT_WORKS.md '## Delay and ghost'"
+    },
+    {
+      "id": "truth_density",
+      "value": 2.3,
+      "unit": "g/cm3",
+      "measures": "hidden rock density the true arm uses",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS row 'M4 | builder (Track A) | 19:05 EST' (mismatch: truth 62.1 g, mu 0.6 vs ghost 43.2 g, mu 0.8; 62.1/43.2 = 2.3/1.6) and PROGRESS verdict 'M4 VERIFIED 19:13 EST'; HOW_IT_WORKS.md '## Delay and ghost'"
+    },
+    {
+      "id": "truth_friction",
+      "value": 0.6,
+      "unit": "mu",
+      "measures": "hidden rock friction the true arm uses",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS row 'M4 | builder (Track A) | 19:05 EST' (mismatch: truth 62.1 g, mu 0.6 vs ghost 43.2 g, mu 0.8) and PROGRESS verdict 'M4 VERIFIED 19:13 EST'; HOW_IT_WORKS.md '## Delay and ghost'"
+    },
+    {
+      "id": "planned_trials",
+      "value": "12-16",
+      "unit": "trials",
+      "measures": "planned logged trials, one operator (Ahmed)",
+      "denominator": null,
+      "status": "planned",
+      "source": "private/PLAN.md section 2 ('Ahmed's own 12-16 trials, labelled one operator')"
+    },
+    {
+      "id": "event_year",
+      "value": 2026,
+      "unit": "year",
+      "measures": "UB Hacking edition",
+      "denominator": null,
+      "status": "sourced",
+      "source": "README.md line 3"
+    },
+    {
+      "id": "first_commit",
+      "value": "1:43 PM EST, Nov 7 2026",
+      "unit": "time",
+      "measures": "the repository's first commit, after hacking opened at 1:30 PM",
+      "denominator": null,
+      "status": "verified",
+      "source": "command: git log --format='%ci %h %s' | tail -2 -> '2026-11-07 13:43:04 -0500 5ef35df'; README.md '### Built during UB Hacking 2026'; PROGRESS '## First-commit evidence'"
+    },
+    {
+      "id": "hacking_open",
+      "value": "1:30 PM EST, Nov 7 2026",
+      "unit": "time",
+      "measures": "start of the official hacking period",
+      "denominator": null,
+      "status": "sourced",
+      "source": "private/.autopilot/FACTS.md (Devpost period Nov 7 1:30 PM -> Nov 8 1:30 PM); README.md line 91"
+    },
+    {
+      "id": "calc_rock_ref_hull_cc",
+      "value": 17.887,
+      "unit": "cm3",
+      "measures": "calculator: Rock sample tab scales this measured hull (Bennu-like sample at 40 mm): V = 17.887 x (size/40)^3",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json objects[0] HULL_OK 17.887; command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'rock 40mm C-type g 28.62'"
+    },
+    {
+      "id": "calc_part_ref_hull_cc",
+      "value": 14.786,
+      "unit": "cm3",
+      "measures": "calculator: Satellite part tab scales this measured hull (CubeSat panel at 50 mm): V = 14.786 x (size/50)^3",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'CubeSat solar panel' HULL_OK 14.786; command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'panel 50mm alu g 39.92'"
+    },
+    {
+      "id": "calc_default_rock_g",
+      "value": 28.6,
+      "unit": "g",
+      "measures": "calculator default result: 40 mm C-type rock (matches the app's 29 g receipt)",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'rock 40mm C-type g 28.62'"
+    },
+    {
+      "id": "bennu_weight_friction_earth",
+      "value": 0.0056,
+      "unit": "mu",
+      "measures": "friction the 29 g sample needs just for its weight at 9.82 m/s2 with a 50 N squeeze (m g / 50)",
+      "denominator": null,
+      "status": "computed",
+      "source": "command node private/.autopilot/site/calc-facts.mjs (output in calc-facts.out.txt) -> 'bennu 29 g weight mu at earth 0.0056'; EVID s4-gallery.json objects[0] FRICTION_OK limit 0.00562"
+    },
+    {
+      "id": "bennu_vertices",
+      "value": 642,
+      "unit": "vertices",
+      "measures": "vertices in the generated Bennu-like sample mesh (every asteroid mesh has 642)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json objects[0] SANITY_OK '642 vertices'; PROGRESS row 'S4 | verifier | 16:19 EST' and PROGRESS row 'S5 | builder | 17:25 EST' ('mesh drawn (642 verts)'), S5 VERIFIED (PROGRESS verdict 'S5 VERIFIED 17:52 EST')"
+    },
+    {
+      "id": "arm_joints",
+      "value": 5,
+      "unit": "joints",
+      "measures": "arm joints the inverse kinematics solves (plus the jaw)",
+      "denominator": null,
+      "status": "design",
+      "source": "PROGRESS '## Executor deviations', entry 'S2: the IK solves 5 joints ...'"
+    },
+    {
+      "id": "mujoco_version",
+      "value": "4.0.0",
+      "unit": "version",
+      "measures": "MuJoCo version, compiled to WebAssembly",
+      "denominator": null,
+      "status": "verified",
+      "source": "README.md '### Existed before'; PROGRESS row 'S4 | builder | 16:13 EST' ('@mujoco/mujoco 4.0.0 WASM')"
+    },
+    {
+      "id": "panel_height_mm",
+      "value": 10,
+      "unit": "mm",
+      "measures": "thickness of the CubeSat panel preset",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/mock.ts line 40 (height_mm 10)"
+    },
+    {
+      "id": "louca_year",
+      "value": 2024,
+      "unit": "year",
+      "measures": "year of the University of Bristol delayed robot-arm study (Louca et al.)",
+      "denominator": null,
+      "status": "sourced",
+      "source": "README.md line 81 (doi:10.1145/3651993)"
+    },
+    {
+      "id": "gemini_gate_valid_specs",
+      "value": 5,
+      "unit": "specs",
+      "measures": "live Gemini replies that passed the schema (format) check in the gate; the gate did not check that returned sizes matched the request, and they did not always",
+      "denominator": 5,
+      "status": "verified",
+      "source": "PROGRESS '## Gate results', entry '19:3x EST, Gemini live gate' (node scratchpad/gemini_gate.mjs against node server/index.mjs, model gemini-3.8-flash: '5/5 schema-valid specs, 0 failures'; end-to-end ms 4227, 5356, 3142, 3672, 3867). Caveat shown with it: the gate checked the response format (schema) only; the returned sizes did not always match the request. Model name also in server/index.mjs (GEMINI_MODEL = 'gemini-3.8-flash')"
+    },
+    {
+      "id": "gemini_gate_median_ms",
+      "value": 3867,
+      "unit": "ms",
+      "measures": "median end-to-end time per request in the Gemini live gate (5 requests; pass rule was <= 4000 ms)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS '## Gate results', entry '19:3x EST, Gemini live gate' ('median 3867 ms <= 4000 ms -> PASS')"
+    },
+    {
+      "id": "gemini_model_version",
+      "value": "3.8 Flash",
+      "unit": "version",
+      "measures": "the Gemini model the key server calls",
+      "denominator": null,
+      "status": "design",
+      "source": "server/index.mjs line 18 (GEMINI_MODEL = 'gemini-3.8-flash')"
+    },
+    {
+      "id": "unit_test_files",
+      "value": 31,
+      "unit": "files",
+      "measures": "Vitest test files in that run",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M4f VERIFIED 20:03 EST' ('npm test 201/201 in 31 files')"
+    },
+    {
+      "id": "tracking_other_runs_ms",
+      "value": "17-26.6",
+      "unit": "ms",
+      "measures": "median hand-tracking time in other fake-camera runs (not the 11 ms run) NOT SHOWN ON THE PAGE: runs differ in GPU (the 26.6 ms run used the Intel Iris Xe, the 17 ms run the RTX 4050), so a single range would mislead.",
+      "denominator": null,
+      "status": "not-shown",
+      "source": "PROGRESS row 'M1 | builder (Track A) | 18:27 EST' ('median tracking 17 ms (max 29.5, 112 samples, GPU, RTX 4050)'); PROGRESS row 'M1 | builder (Track A, addendum) | 18:33 EST' ('median tracking 17.7 ms (max 51.8, 119 samples)'); PROGRESS row 'S3 | builder | 16:33 EST' ('median inference 26.6 ms (max 67.3 ms, 98 samples)', on the Intel Iris Xe per the S3 deviation 'inference times are headless Chrome on the Intel Iris Xe')"
+    },
+    {
+      "id": "sheridan_year",
+      "value": 1984,
+      "unit": "year",
+      "measures": "MIT predictive-display work: Sheridan's 1984 review of teleoperator research (predictor display over delayed video, 1-3 s delays)",
+      "denominator": null,
+      "status": "sourced",
+      "source": "Sheridan 1984, 'Review of Teleoperator Research', NTRS 19850006202 (ntrs.nasa.gov/citations/19850006202, abstract retrieved 2026-11-07); README.md '## Who this is for'; private/.autopilot/research/track-delay-predictive-display-evidence.md (sources table; 'The MIT lab that pioneered them')"
+    },
+    {
+      "id": "bejczy_year",
+      "value": 1990,
+      "unit": "year",
+      "measures": "JPL predictive-display work: Bejczy, Kim and Venema, 'The phantom robot: predictive displays for teleoperation with time delay', IEEE ICRA 1990",
+      "denominator": null,
+      "status": "sourced",
+      "source": "doi:10.1109/ROBOT.1990.126037; NTRS 19910050529; private/.autopilot/research/track-delay-predictive-display-evidence.md (sources table)"
+    },
+    {
+      "id": "pick_clip_rise_mm",
+      "value": 77,
+      "unit": "mm",
+      "measures": "rock rise shown by the hero animation's 'LIFT' label (77.0493 mm unrounded): the Bennu-like sample's centre rise at the end of the hold in the recorded lift test",
+      "denominator": null,
+      "status": "computed",
+      "source": "site/assets/motion/pick.json measured.rock_rise_mm 77.0493 (receipt lift_rise_mm 77.0477), recorded by site/tools/record-motion.ts with the app's own ArmLiftTester at Earth gravity 9.81 m/s2 (meta.source); the same preset's verified browser lift test rose 77.3 mm (bennu_lift_rise_mm)"
+    },
+    {
+      "id": "pick_clip_mass_g",
+      "value": 29,
+      "unit": "g",
+      "measures": "rock mass shown by the hero animation's 'SAMPLE' label (28.6191 g unrounded)",
+      "denominator": null,
+      "status": "computed",
+      "source": "site/assets/motion/pick.json measured.rock_mass_g 28.6191 (receipt mass_g), same preset as bennu_mass_g"
+    },
+    {
+      "id": "test_gpu",
+      "value": "RTX 4050",
+      "unit": "GPU model",
+      "measures": "GPU of the machine where the 11 ms tracking median and the 240 frames per second were measured (headless Chrome; WebGL on the RTX 4050)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('WebGL on RTX 4050') and PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('240 fps (>=50) on RTX 4050')"
+    },
+    {
+      "id": "positions_total",
+      "value": 9,
+      "unit": "positions",
+      "measures": "cube positions tried in the Node sweep (6 picked)",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS row 'S2 | builder | 16:06 EST' ('Extra sweep over 9 cube positions in Node -> 6/9'); EVID s2-vary-positions.txt"
+    },
+    {
+      "id": "scan_full_text_edition",
+      "value": "Fall 2025",
+      "unit": "edition",
+      "measures": "the one UB Hacking edition whose project pages the 755-entry scan read in full text (older editions: titles and taglines only)",
+      "denominator": null,
+      "status": "sourced",
+      "source": "private/.autopilot/research/track-ub-hacking-past-winners.md ('Method' paragraph: 'Fall 2025 used the full text of all 135 project pages. Older editions used titles and taglines only'); README.md '## Who this is for'"
+    }
+  ]
+}

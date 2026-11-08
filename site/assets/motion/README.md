@@ -1,0 +1,3 @@
+pick.json is a 5.5 s recording (30 fps, 166 frames) of the simulated SO-ARM100 arm gripping and lifting the generated Bennu-like sample (preset bennu-sample), with 3,255 points sampled from the model's meshes, for the page's point-cloud animation.
+It was made by running the app's own lift test (ArmLiftTester through proveLift, unchanged, in MuJoCo) on the spawned and settled sample, sampling every body's world pose each 1/30 s of simulated time; the measured block (rise, hold time) is computed from the recording, and width and mass come from the object's receipt.
+Command, from web/: node scripts/run-ts.mjs ../site/tools/record-motion.ts
