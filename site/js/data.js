@@ -7,7 +7,9 @@ export const LIMITS = {
   handWMin: 15, // mm  {hand_width_min_mm}
   handWMax: 55, // mm  {hand_width_max_mm}
   handMMax: 200, // g  {hand_mass_max_g}
-  farTooBig: 110, // mm  calculator rule 1 threshold (COPY.md); not shown as a number
+  handHMax: 60, // mm  {hand_height_max_mm}
+  hMin: 8, // mm  {grip_height_min_mm}; used for the scale-up rule, not shown as a number
+  insideMargin: 0.001, // guardrail.ts INSIDE_MARGIN: a rescale lands this far inside the limit; not shown
   squeezeN: 50, // N  {squeeze_n}
   liftPassMm: 48, // mm  {lift_pass_rise_mm}
   iceNeeded: 0.26, // mu  {ice_friction_needed}
@@ -25,27 +27,33 @@ export const GRAVITY = [
 // Materials (web/src/objects/materials.ts): density g/cm^3 and friction.
 // {c_type_density} {s_type_density} {ice_density} {aluminium_density} {iron_density}
 // {c_type_friction} {s_type_friction} {ice_friction} {aluminium_friction} {iron_friction}
+// basis: where the friction value comes from (facts.json status 'design' or 'sourced').
 export const MATERIALS = {
-  c_type_rock: { label: 'C-type rock', density: 1.6, friction: 0.6 },
-  s_type_rock: { label: 'S-type rock', density: 3.2, friction: 0.7 },
-  ice: { label: 'Ice', density: 0.9, friction: 0.03 },
-  aluminium: { label: 'Aluminium', density: 2.7, friction: 0.47 },
-  iron: { label: 'Iron', density: 7.8, friction: 0.6 },
+  c_type_rock: { label: 'C-type rock', density: 1.6, friction: 0.6, basis: 'design value' },
+  s_type_rock: { label: 'S-type rock', density: 3.2, friction: 0.7, basis: 'design value' },
+  ice: { label: 'Ice', density: 0.9, friction: 0.03, basis: 'Engineering ToolBox' },
+  aluminium: { label: 'Aluminium', density: 2.7, friction: 0.47, basis: 'Engineering ToolBox' },
+  iron: { label: 'Iron', density: 7.8, friction: 0.6, basis: 'design value' },
 };
 
 // Calculator tabs. Mass = a measured convex hull scaled to the chosen size, times density.
 // Rock: Bennu-like sample hull 17.887 cm^3 at 40 mm {calc_rock_ref_hull_cc}.
 // Part: CubeSat panel hull 14.786 cm^3 at 50 mm {calc_part_ref_hull_cc}.
 // Defaults give 28.6 g (rock) {calc_default_rock_g}.
+// refNarrowMm / refHeightMm: the measured narrowest side (where the jaw closes) and the height at refMm,
+// so the calculator can apply the app's rescale rule (guardrail.ts step 4) before it weighs the object.
+// Rock: {calc_rock_ref_narrow_mm} {bennu_height_mm}. Part: {calc_part_ref_narrow_mm} {panel_height_mm}.
 export const TABS = {
   rock: {
     materials: ['c_type_rock', 's_type_rock', 'ice'], refHullCc: 17.887, refMm: 40, defaultMm: 40,
+    refNarrowMm: 27.82, refHeightMm: 33,
     shape: 'Shape: Bennu-like hull, 17.9 cm³ at 40 mm, scaled.',
   },
   // The part tab is a flat panel, so it is much lighter than a solid lump of the same width.
   // {panel_width_mm} {panel_height_mm}
   part: {
     materials: ['aluminium', 'iron'], refHullCc: 14.786, refMm: 50, defaultMm: 50, matSuffix: ' panel',
+    refNarrowMm: 29.57, refHeightMm: 10,
     shape: 'Shape: CubeSat panel, 50 × 10 mm, 14.8 cm³, scaled.',
   },
 };

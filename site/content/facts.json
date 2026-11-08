@@ -11,7 +11,8 @@
     },
     "rule": "The page never shows a number that is not in this file. The ghost-arm result is 'not measured yet' (0 logged trials).",
     "fixer_round_2": "2026-11-07: Gemini corrected from 'offline mode, no call made' to the live gate result (gemini_gate_valid_specs, gemini_gate_median_ms, gemini_model_version); the 7 object-grid requests stay as run on the offline mock (S5 VERIFIED 17:52 EST, before the key was supplied at about 19:30). After the copy trim these facts are no longer shown on the page and are kept only for the record: ik_error_min_mm, ik_error_max_mm, rotex_delay_s, study_size_people, pinch_confirm_frames, mujoco_version.",
-    "fixer_round_3": "2026-11-07 final fix: every PROGRESS citation rewritten from line numbers to row labels; unit tests 182 -> 201 (M4f VERIFIED 20:03, the newest full run); added unit_test_files, tracking_other_runs_ms, sheridan_year, bejczy_year, pick_clip_rise_mm, pick_clip_mass_g; ice refusal quoted at 9.81 (Earth) as the S5 rows say; Gemini 5/5 now carries its caveat (format only; sizes did not always match)."
+    "fixer_round_3": "2026-11-07 final fix: every PROGRESS citation rewritten from line numbers to row labels; unit tests 182 -> 201 (M4f VERIFIED 20:03, the newest full run); added unit_test_files, tracking_other_runs_ms, sheridan_year, bejczy_year, pick_clip_rise_mm, pick_clip_mass_g; ice refusal quoted at 9.81 (Earth) as the S5 rows say; Gemini 5/5 now carries its caveat (format only; sizes did not always match).",
+    "fixer_round_4": "2026-11-07: calculator now follows guardrail.ts order (rescale on narrowest side and height, then weigh the rescaled object): added hand_height_max_mm, grip_height_min_mm, calc_rock_ref_narrow_mm, calc_part_ref_narrow_mm. Calculator friction now labelled by basis (design value or Engineering ToolBox, as in ice_friction/aluminium_friction status 'sourced'). Added the Stop row: stop_hold_s, stop_latch_s, stop_replay_frames (PROGRESS verdict 'M6 VERIFIED 19:29 EST'). The friction pick numbers 78.4 mm / 5.73 s / 0.37 s are the newer verified ones (S3 verifier through HandMapper, M1 VERIFIED s2-pick, EVID s2-repeat.json); HOW_IT_WORKS.md '## Friction grip' still quotes the older S2 builder run (78.2 mm, 5.65 s, 0.25 s) and is owned by another session."
   },
   "facts": [
     {
@@ -1318,6 +1319,69 @@
       "denominator": null,
       "status": "sourced",
       "source": "private/.autopilot/research/track-ub-hacking-past-winners.md ('Method' paragraph: 'Fall 2025 used the full text of all 135 project pages. Older editions used titles and taglines only'); README.md '## Who this is for'"
+    },
+    {
+      "id": "hand_height_max_mm",
+      "value": 60,
+      "unit": "mm",
+      "measures": "tallest object allowed when flying by hand (same as the hard height limit); taller requests are rescaled to fit",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 11 (H_MAX 0.06 m) and line 81 (HAND_BAND h_max: H_MAX); used by guardrail.ts step 4 scaleWindow"
+    },
+    {
+      "id": "grip_height_min_mm",
+      "value": 8,
+      "unit": "mm",
+      "measures": "lowest object height the fingertips can reach; flatter requests are scaled up (calculator scale-up rule only, not shown as a number)",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/limits.ts line 27 (H_MIN 0.008 m); used by guardrail.ts step 4 scaleWindow"
+    },
+    {
+      "id": "calc_rock_ref_narrow_mm",
+      "value": 27.82,
+      "unit": "mm",
+      "measures": "calculator: Rock sample tab's narrowest side at 40 mm (where the jaw closes), scaled with size to apply the app's rescale rule; height scales from bennu_height_mm (33 at 40)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json objects[0] YAW_CHOSEN measured 27.818890783446633 ('Narrowest side: 28 millimetres ... Widest: 40'; SCALE_OK '33 tall') (PROGRESS verdict 'S4 VERIFIED 16:19 EST')"
+    },
+    {
+      "id": "calc_part_ref_narrow_mm",
+      "value": 29.57,
+      "unit": "mm",
+      "measures": "calculator: Satellite part tab's narrowest side at 50 mm (CubeSat panel), scaled with size to apply the app's rescale rule; height scales from panel_height_mm (10 at 50)",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID s4-gallery.json 'CubeSat solar panel' YAW_CHOSEN measured 29.572350904345516 ('Narrowest side: 30 millimetres ... Widest: 58'; SCALE_OK '10 tall') (PROGRESS verdict 'S4 VERIFIED 16:19 EST')"
+    },
+    {
+      "id": "stop_hold_s",
+      "value": 0.4,
+      "unit": "s",
+      "measures": "how long both hands must be held open (with ?hands=2) to trigger the stop gesture",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/safety/stopGesture.ts line 16 (TWO_HANDS_HOLD_S = 0.4); PROGRESS verdict 'M6 VERIFIED 19:29 EST'"
+    },
+    {
+      "id": "stop_latch_s",
+      "value": 0.4,
+      "unit": "s",
+      "measures": "time for the two-open-hands stop gesture to latch in the scripted-hands test (shown as 0.40 s)",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'M6 VERIFIED 19:29 EST' ('two open hands latch at 0.40 s (<0.5), 1 fire, ctrl change 0 over 2.0 s'); evidence in EVID m6-verify"
+    },
+    {
+      "id": "stop_replay_frames",
+      "value": 601,
+      "unit": "frames",
+      "measures": "frames in the pinch-and-carry replay that never triggered the stop gesture (0 fires)",
+      "denominator": "601 frames",
+      "status": "verified",
+      "source": "PROGRESS verdict 'M6 VERIFIED 19:29 EST' ('pinch-and-carry 601 frames 0 fires'); evidence in EVID m6-verify"
     }
   ]
 }

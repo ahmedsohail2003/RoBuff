@@ -1,7 +1,9 @@
 // "Can the arm lift it?" quick check.
 // Mass = a measured hull scaled to the chosen size, times the material's density (data.js TABS).
 // Friction needed for the object's weight = mass_kg * g / 50 N (the guardrail's weight check).
-// Verdicts follow COPY.md section 2: the first rule that matches wins. Labelled "Quick check".
+// Order follows the app (web/src/objects/guardrail.ts): step 4 first rescales on the narrowest side
+// and the height, then step 5 weighs the rescaled object. The first verdict that matches wins.
+// Labelled "Quick check".
 
 import { LIMITS, GRAVITY, MATERIALS, TABS, IRON_SOLID_NOTE } from './data.js';
 
@@ -83,22 +85,49 @@ export function mountCalculator(form) {
     const g = GRAVITY[gi];
     const d = Number(size.value); // mm
     const volume = t.refHullCc * (d / t.refMm) ** 3; // cm^3
-    const mass = volume * m.density; // g
-    const need = ((mass / 1000) * g.g) / LIMITS.squeezeN;
+    const mass = volume * m.density; // g, at the chosen size
+
+    // guardrail.ts step 4: one uniform scale that brings the narrowest side and the height inside the hand band.
+    const narrow = d * (t.refNarrowMm / t.refMm);
+    const height = d * (t.refHeightMm / t.refMm);
+    const lowW = LIMITS.handWMin / narrow;
+    const lowH = LIMITS.hMin / height;
+    const low = Math.max(lowW, lowH);
+    const high = Math.min(LIMITS.handWMax / narrow, LIMITS.handHMax / height);
+    let scale = 1;
+    if (low > 1) scale = Math.min(high, low * (1 + LIMITS.insideMargin));
+    else if (high < 1) scale = Math.max(low, high * (1 - LIMITS.insideMargin));
+    // guardrail.ts MODEL_SCALE: once a request is shrunk below half size it is a model anyway, so the
+    // app also sizes it to land just under the mass limit (if that still fits the jaw).
+    let sizedForMass = false;
+    if (scale < 0.5 && mass * scale ** 3 > LIMITS.handMMax) {
+      const s = Math.cbrt((LIMITS.handMMax * 0.98) / mass);
+      if (s >= low) { scale = s; sizedForMass = true; }
+    }
+    // guardrail.ts step 5: the app weighs the object after that rescale.
+    const finalMass = mass * scale ** 3;
+    const need = ((finalMass / 1000) * g.g) / LIMITS.squeezeN;
 
     oSize.textContent = `${d} mm`;
     oGrav.textContent = `${g.shown} m/s²`;
     size.setAttribute('aria-valuetext', `${d} millimetres`);
     setFill(size);
     animateMass(mass);
-    oNeed.textContent = `Weight alone needs friction ≥ ${fmtMu(need)} · has ${m.friction} (design value); the jaw angle adds more, per shape`;
+    oNeed.textContent = `Weight alone needs friction ≥ ${fmtMu(need)}${scale !== 1 ? ' after the rescale' : ''} · has ${m.friction} (${m.basis}); the jaw angle adds more, per shape`;
     if (oShape) oShape.textContent = t.shape;
 
+    const by = `${scale.toFixed(2)}×`;
     let text;
-    if (d > LIMITS.farTooBig) text = 'Far too big to grip. The app builds a 55 mm model instead and says so.';
-    else if (mass > LIMITS.handMMax) text = 'Too heavy: over the 200 g hand-flying limit. The app refuses it.';
-    else if (d > LIMITS.handWMax) text = 'Wider than the 55 mm hand-flying limit. The app scales it down and says by how much.';
-    else if (d < LIMITS.handWMin) text = 'Too small to hold well (15 mm minimum). The app scales it up.';
+    if (low > high) text = 'No single size fits both the jaw and the height limits, so the app refuses it.';
+    else if (finalMass > LIMITS.handMMax) {
+      text = scale < 1
+        ? `Over the 200 g hand-flying limit even after the app shrinks it to fit the jaw (${by}, ${fmtMass(finalMass)} g). The app refuses it.`
+        : 'Too heavy: over the 200 g hand-flying limit. The app refuses it.';
+    } else if (sizedForMass) text = `Much bigger than the jaw. The app builds a ${by} model, sized to stay under the 200 g limit; that model weighs ${fmtMass(finalMass)} g.`;
+    else if (scale < 1) text = `Its narrowest side or height is over the hand-flying limit (55 mm at the jaw, 60 mm tall). The app scales it to ${by} and says so; that model weighs ${fmtMass(finalMass)} g.`;
+    else if (scale > 1) text = lowW >= lowH
+      ? 'Too small to hold well (15 mm minimum at the jaw). The app scales it up and says by how much.'
+      : 'Too thin for the fingertips to reach. The app scales it up and says by how much.';
     else if (mat.value === 'ice') text = 'Ice has friction 0.03, so the pad angle decides. The app’s ice shard needed 0.26: refused.';
     else text = 'Inside the arm’s limits. Next, a simulated lift test: a pass means still 48 mm up after the hold.';
     oVerdict.textContent = text;

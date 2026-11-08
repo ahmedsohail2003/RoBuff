@@ -116,7 +116,7 @@
             <div class="result" aria-live="polite">
               <div class="row"><span class="chip">Quick check</span></div>
               <div class="big-num"><span id="o-mass">28.6</span><small>g</small></div>
-              <p class="need" id="o-need">Needs friction ≥ 0.0056, has 0.6</p>
+              <p class="need" id="o-need">Weight alone needs friction ≥ 0.0056 · has 0.6 (design value); the jaw angle adds more, per shape</p>
               <p class="shape" id="o-shape">Shape: Bennu-like hull, 17.9&nbsp;cm³ at 40&nbsp;mm, scaled.</p>
               <p class="verdict" id="o-verdict">Inside the arm's limits. Next, a simulated lift test: a pass means still 48&nbsp;mm up after the hold.</p>
               <p class="verdict extra" id="o-extra" hidden></p>
@@ -365,20 +365,21 @@
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">What that means</th></tr></thead>
             <tbody>
               <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a picture and a fake camera: 123 of 123 frames found the hand. <b>A real hand on a real webcam has not been tested yet.</b></td></tr>
-              <tr><th scope="row">Friction pick and lift</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Cube rose 78.4&nbsp;mm and held 5.73&nbsp;s; 5 of 5 repeats from one start, 6 of 9 positions.</td></tr>
+              <tr><th scope="row">Friction pick and lift</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Cube rose 78.4&nbsp;mm and held 5.73&nbsp;s (scripted hand through the hand-to-arm mapping); 5 of 5 repeats from one start, 6 of 9 positions.</td></tr>
               <tr><th scope="row">Generated objects and lift test</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>7 requests in the browser: 5 lifted, 2 refused with numbers.</td></tr>
               <tr><th scope="row">Gravity menu</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Earth, Mars, Moon, Bennu, orbit. A cube dropped 0.10&nbsp;m landed in 0.354&nbsp;s on the Moon (theory 0.351&nbsp;s) and 0.144&nbsp;s on Earth (theory 0.143&nbsp;s).</td></tr>
               <tr><th scope="row">Robot arm</th><td class="state"><span class="state-dot half" aria-hidden="true"></span>Simulated</td><td>MuJoCo physics on the public SO-ARM100 model. No real robot is connected.</td></tr>
               <tr><th scope="row">Contact at low gravity</th><td class="state"><span class="state-dot half" aria-hidden="true"></span>Simulated, unreliable</td><td>At Bennu gravity a 5 cm/s push lifted a resting cube 46.9&nbsp;mm: a solver artefact, not real physics. The receipt warns below 0.1&nbsp;m/s².</td></tr>
               <tr><th scope="row">Object requests</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Gemini 3.8 Flash through a small key server: 5 of 5 replies in the right format in a live test, median 3867&nbsp;ms. That test checked the format only; the sizes returned did not always match the request. With no key, an offline keyword parser takes over, labelled on screen. The 7 requests in the object grid were run offline.</td></tr>
               <tr><th scope="row">Voice</th><td class="state"><span class="state-dot" aria-hidden="true"></span>Offline mode</td><td>An offline grammar reads typed commands and the browser's built-in voice speaks each reply, with captions; tested in Chrome. The ElevenLabs text-to-speech route is written but untested: no ElevenLabs API key is set up yet.</td></tr>
+              <tr><th scope="row">Stop</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with scripted hands</td><td>Space freezes every joint and the jaw; only the on-screen Resume clears it. With <span class="mono">?hands=2</span>, both hands open held 0.4&nbsp;s also stops the arm: in tests it latched at 0.40&nbsp;s, and a 601-frame pinch-and-carry replay never set it off. <b>Not yet tried with a real hand.</b></td></tr>
               <tr><th scope="row">Earth-Moon delay</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>In Moon mode, commands reached the arm 1.28&nbsp;s late and the view another 1.28&nbsp;s, measured in the simulation.</td></tr>
               <tr><th scope="row">Ghost arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>Two simulations run side by side. The ghost assumes a rock of 1.6&nbsp;g/cm³ and friction 0.8 while the true arm hides 2.3&nbsp;g/cm³ and 0.6, so the two really disagree.</td></tr>
               <tr><th scope="row">Ghost result</th><td class="state"><span class="state-dot dash" aria-hidden="true"></span>Not measured yet</td><td>0 logged trials with a person; the trial logger is built. The pass rule was written before any data: with the ghost on, the median time must be at most 0.75 of the time with it off, with no fewer successes. One operator (me), so it will not generalise.</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="real-note reveal">The app's hard limits for objects (10 to 70&nbsp;mm wide, up to 300&nbsp;g) were set with a safety margin from grasp tests on the simulated arm. For flying by hand the app keeps a margin inside them, 15 to 55&nbsp;mm and 200&nbsp;g, and those are the limits the calculator and the refusals use. A real SO-ARM100's payload is unverified.</p>
+        <p class="real-note reveal">The app's hard limits for objects (10 to 70&nbsp;mm wide, up to 300&nbsp;g) were set with a safety margin from grasp tests on the simulated arm. For flying by hand the app keeps a margin inside them, 15 to 55&nbsp;mm and 200&nbsp;g, chosen from an audit of the author's earlier SO-ARM100 projects (hand control is untested), and those are the limits the calculator and the refusals use. A real SO-ARM100's payload is unverified.</p>
       </div>
     </section>
 
@@ -425,7 +426,7 @@
       </div>
       <div class="credits" id="credits">
         <p>Every line of application code was written during UB Hacking 2026; the repository's first commit is at 1:43 PM EST on November 7, after hacking opened at 1:30 PM.</p>
-        <p>Related earlier projects by the same author: the WorkCell series, EmberHacks "The cell", HandSignal and FleetLine. No code from them is reused here; what carries over is experience and the same public arm model and hand-tracking library.</p>
+        <p>Related earlier projects by the same author: the WorkCell series, EmberHacks "The cell", HandSignal and FleetLine. No code from them is reused here. During planning their repositories were read for facts only (arm limits, package names), never copied; what carries over is experience and the same public arm model and hand-tracking library.</p>
         <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
         <p>Planned, coded and tested with Claude Code (Anthropic's Claude) under my direction and review. Inside the app, the MediaPipe hand landmarker runs in the browser, and Gemini 3.8 Flash reads typed object requests when a key is set on the key server.</p>
       </div>
