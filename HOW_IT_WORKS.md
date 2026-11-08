@@ -12,7 +12,7 @@ Nothing glues the rock to the jaw: no weld, no parenting. The jaw closes on it, 
 
 ## Delay and ghost
 
-Not built yet; this section describes the plan. Light takes 1.28 s each way between the Earth and the Moon (384,400 km, the mean distance in NASA's NSSDC Moon fact sheet, divided by the speed of light: 1.2822 s one way, 2.5644 s round trip). In Moon mode your commands will wait 1.28 s before they reach the arm, and the camera view will wait another 1.28 s before it reaches you. A second simulation, the ghost, will run your commands at once and draw a see-through arm. The ghost will hold a nominal rock (density 1.6 g/cm³, friction 0.8) while the true arm holds values the ghost does not know (2.3 g/cm³, friction 0.6), so the two can really disagree, and the gap between them will be shown in millimetres. No ghost result exists yet.
+Light takes 1.28 s each way between the Earth and the Moon (384,400 km, the mean distance in NASA's NSSDC Moon fact sheet, divided by the speed of light: 1.2822 s one way, 2.5644 s round trip). In Moon mode your commands wait 1.28 s before they reach the true arm, and the view of the true arm waits another 1.28 s before it reaches you: in the unit test a command sent at 1.00 s reached the true arm at 2.29 s (1.28 s plus one 10 ms control step). A second simulation, the ghost, runs your commands at once and is drawn as a see-through arm. With identical settings the ghost and the true arm stayed within 0.2 mm of each other over a 10 s scripted pick. The ghost holds a nominal rock (43.2 g: 1.6 g/cm³, friction 0.8) while the true arm holds values the ghost does not know (62.1 g: 2.3 g/cm³, friction 0.6), so the two really disagree: the rock error during the grasp reached 1.19 mm, shown live on the error meter. Two simulations took a median of 2.1 ms of physics per frame or less in the browser tests. A trial logger times each grab and writes one CSV row per trial for the pre-registered ghost test. No ghost result exists yet (0 logged trials).
 
 ## Guardrail and lift test
 
@@ -24,11 +24,11 @@ The gravity menu writes a new value into every running simulation at once: Earth
 
 ## Voice
 
-Not built yet. The plan is hold-to-talk with the browser's speech recognition, a fixed offline grammar for commands (stop, home, gravity, delay, ghost), Gemini for object requests when a key is present, and ElevenLabs or the browser voice for spoken lines, with captions always on. No API key exists tonight, so the offline modes are what will ship first, labelled on screen.
+Hold V (or the Hold to talk button) and speak, or type in the box. A fixed offline grammar handles commands (stop, resume, home, open, close, the five gravities, delay and ghost on or off, make or give me an object) and never waits for the network; its tests map 20 phrases to the right action and reject 3 nonsense phrases. Object requests go to Gemini 3.8 Flash through a small local key server when a key is set; in the live check on 2026-11-07, 5 of 5 requests came back as valid specs, median 3.9 s end to end (3.1 to 5.4 s). Without a key, an offline keyword mock answers. Spoken replies use the browser's own voice, always with captions; ElevenLabs is not connected (no key). Badges on screen say which source answered and which voice spoke. Voice can never clear a stop.
 
 ## Safety
 
-Space stops the arm. The stop latch then sends no new commands, so every joint and the jaw hold where they are and a held rock is not dropped; only the on-screen Resume button clears it. Its unit tests pass (2 of 2, run 2026-11-07 18:11 EST); its browser check is still pending. If the hand is lost, the arm holds the last palm position and grip; a returning hand must be seen for 2 frames, and the arm target cannot move faster than 0.25 m/s. A stop gesture (both hands open) is planned and not built.
+Space stops the arm. The stop latch then sends no new commands, so every joint and the jaw hold where they are and a held rock is not dropped; only the on-screen Resume button clears it. In the browser check, after Space the arm's commands did not change for 2.2 s of simulated time while the physics kept running. If the hand is lost, the arm holds the last palm position and grip; a returning hand must be seen for 2 frames, and the arm target cannot move faster than 0.25 m/s. The stop gesture is both hands open with fingers spread, held 0.4 s (it needs `?hands=2`): in tests it latched at 0.40 s, and a 601-frame pinch-and-carry replay never set it off. It has not been tried with a real hand yet.
 
 ## Prepared answers
 
@@ -46,7 +46,7 @@ Mostly they will. The Canadian Space Agency says Canadarm3 will do some tasks on
 
 ### What does the AI actually do?
 
-A hand-pose model (MediaPipe's hand landmarker) reads your hand on your own machine; without it there is no hand control. The guardrail is plain rules and a simulated lift test, not AI. Object requests are meant to go to Gemini; tonight no key exists, so the offline keyword mock ships, and the screen says so. The physics and the ghost are not AI.
+A hand-pose model (MediaPipe's hand landmarker) reads your hand on your own machine; without it there is no hand control. The guardrail is plain rules and a simulated lift test, not AI. Object requests go to Gemini 3.8 Flash when a key is set (live check: 5 of 5 valid specs, median 3.9 s), and Gemini only proposes: code decides what may spawn. Without a key, the offline keyword mock answers, and the screen says so. The physics and the ghost are not AI.
 
 ### How accurate is the physics? Can the arm really lift that?
 

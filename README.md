@@ -6,7 +6,7 @@ Pinch now, grip 2.56 seconds later. An entry for UB Hacking 2026 by Ahmed Sohail
 
 ## What it does
 
-Robuff is a browser testbed where your bare hand, seen by a laptop webcam, drives a physics-simulated SO-ARM100 robot arm that picks things up by friction alone. You can ask for an object, such as an asteroid sample or a satellite part, and a guardrail checks it against the arm's measured limits and a simulated lift test before it appears; a gravity menu switches the scene between Earth, Mars, the Moon, the asteroid Bennu and orbit. The next layer, still being built, sends your commands through the true Earth-Moon light delay of 2.56 s, with a predictive "ghost" arm that does not know the rock's true mass.
+Robuff is a browser testbed where your bare hand, seen by a laptop webcam, drives a physics-simulated SO-ARM100 robot arm that picks things up by friction alone. You can ask for an object, such as an asteroid sample or a satellite part, and a guardrail checks it against the arm's measured limits and a simulated lift test before it appears; a gravity menu switches the scene between Earth, Mars, the Moon, the asteroid Bennu and orbit. In Moon mode your commands travel through the true Earth-Moon light delay (1.28 s each way, 2.56 s round trip), and a translucent predictive "ghost" arm answers your hand at once; the ghost does not know the rock's true mass, so the two can disagree and an error meter shows by how much.
 
 How each part works, with its measured numbers: [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
 
@@ -39,12 +39,16 @@ The browser tests use the installed Google Chrome (Playwright runs with `channel
 | `?input=mouse` | Move the mouse to steer, W and S to reach nearer or farther, left click (or G) to close or open the jaw. Right drag orbits the camera. |
 | `?input=synthetic` | A scripted hand picks up the cube by itself. Used by the tests; never counted as a result. |
 | `?speed=N` | Runs N simulated seconds per wall second (0.1 to 8). |
-| `?hands=2` | Tracks two hands instead of one. |
+| `?hands=2` | Tracks two hands instead of one, which turns on the stop gesture (both hands open, fingers spread, held 0.4 s). |
+| Mode buttons, or M | Direct (no delay), Moon with the ghost off, Moon with the ghost on. Switching resets the scene. |
+| `?trial=1` | Trial mode: the app sets the order, counts down, times each grab and offers the results as CSV. |
+| V (hold), or the Hold to talk button | Voice commands, such as "stop", "Moon" or "give me a comet ice shard". The text box does the same. |
+| G | Cycles gravity. |
 | Space | Stops the arm: every joint and the jaw hold. Only the on-screen Resume button clears it. |
 | Gravity menu (bottom left) | Earth, Mars, Moon, Bennu, orbit, each with its source. |
 | Object panel (top right) | Type a request or pick a preset; the receipt shows every check. |
 
-No API key is needed. `web/.env.example` lists the optional key names (Gemini, ElevenLabs, Vultr). No code reads them yet: the object brain is an offline keyword mock, labelled on screen.
+No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.env.example`), start the small key server with `node server/index.mjs` and object requests go to Gemini 3.8 Flash; without it, an offline keyword mock answers instead. A badge on screen always says which one answered. The key stays in that server and never reaches the browser.
 
 ## Real / simulated / mocked / unfinished
 
@@ -55,13 +59,13 @@ No API key is needed. `web/.env.example` lists the optional key names (Gemini, E
 | Grip and contact | Simulated | Friction contact in MuJoCo. Not validated against any real arm. Unreliable at very low gravity (see Limits). |
 | Gravity values | Real data, simulated effect | Earth, Mars and Moon from NASA's fact sheets; Bennu calculated from JPL data with spin ignored; orbit set to 0. |
 | Generated objects | Simulated | Procedural meshes made in the browser. Densities from published sample data; rock and iron friction are design values. |
-| Object requests | Mocked | An offline keyword parser in the browser, labelled "offline mock, no Gemini". No Gemini call is made. |
+| Object requests | Real AI when a key is set, else mocked | Gemini 3.8 Flash turns the request into a spec under a fixed schema (live check on 2026-11-07: 5 of 5 valid specs, median 3.9 s). Without a key, an offline keyword parser answers, labelled "offline mock". Either way, code decides what may spawn. |
 | Lift test | Simulated | A headless pick on a second copy of the same simulated arm. |
 | Mouse and synthetic hand | Simulated input | Labelled on screen; never counted in results. |
-| Earth-Moon delay and ghost arm | Unfinished | Being built. Not in the app yet. |
-| Trial logger and results | Unfinished | Being built. No trials logged. |
-| Voice | Unfinished | Not built. |
-| Stop gesture | Unfinished | Not built. The Space key stop works. |
+| Earth-Moon delay and ghost arm | Simulated | Built. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
+| Trial logger and results | Built, not yet run | The logger and the scoring scripts work on synthetic test data, which is never counted. No real trials have been logged. |
+| Voice | Offline | Hold-to-talk with the browser's speech recognition and an offline command grammar; spoken replies use the browser's voice, with captions. ElevenLabs is not connected (no key). |
+| Stop gesture | Built | Both hands open, held 0.4 s, freezes the arm (needs `?hands=2`); the Space key always works. Tested on replayed and synthetic hands, not yet on a real hand. |
 | Hand control feel | Untested | Tested with a scripted hand and a fake camera, not yet with a real hand on a webcam. |
 
 ## Results
@@ -74,7 +78,7 @@ The ghost test will have one operator, who built the system and knows the task, 
 
 Other limits, all measured: at Bennu gravity a 5 cm/s sideways push lifted the resting cube 46.9 mm, which is a solver artefact, not real physics; scripted picks failed at 3 of 9 cube positions, all 8 to 12 cm off the arm's centre line; the pinch thresholds come from a sample photo, not a real pinch.
 
-No camera frames leave the laptop: hand tracking runs on device; Gemini receives only the typed or transcribed request text. Today not even that is sent, because the object brain is the offline mock.
+No camera frames leave the laptop: hand tracking runs on device; Gemini receives only the typed or transcribed request text, and only when a key is configured.
 
 ## Who this is for
 
@@ -115,15 +119,15 @@ What they share with Robuff: the same public arm model (WorkCell and EmberHacks)
 ### AI tools used and how
 
 - Anthropic's Claude, through Claude Code (the Fable and Opus models), planned the build, summarised research, and wrote and tested code and drafts under Ahmed's direction and review.
-- Gemini 3.8 Flash is meant to turn object requests into specs inside the product. It is not connected yet; the offline mock runs instead.
-- ElevenLabs is meant to speak the console's lines. Not connected yet.
+- Gemini 3.8 Flash turns spoken or typed object requests into specs inside the product, through the local key server, when a key is configured. Its live check passed on 2026-11-07 (5 of 5 valid specs, median 3.9 s).
+- ElevenLabs was planned to speak the console's lines. It is not connected (no key); the browser's own voice speaks them, labelled offline.
 - The MediaPipe hand landmarker reads your hand, on device.
 
 ### Simulated and mocked data
 
-- Both arms, the gravity, the contact and (once built) the light delay are simulated.
-- Object specs come from the offline keyword mock when no Gemini key is present, which is always, so far.
-- The voice will use the browser's voice or cached lines when no ElevenLabs key is present.
+- Both arms, the gravity, the contact and the light delay are simulated.
+- Object specs come from the offline keyword mock when no Gemini key is present; the on-screen badge says which source answered.
+- The voice uses the browser's own voice when no ElevenLabs key is present, labelled offline.
 - The tests use a scripted synthetic hand and a fake camera made from a still photo.
 
 ## Credits
