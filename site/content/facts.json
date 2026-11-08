@@ -1382,6 +1382,24 @@
       "denominator": "601 frames",
       "status": "verified",
       "source": "PROGRESS verdict 'M6 VERIFIED 19:29 EST' ('pinch-and-carry 601 frames 0 fires'); evidence in EVID m6-verify"
+    },
+    {
+      "id": "elevenlabs_gate_lines",
+      "value": "5/5",
+      "unit": "lines",
+      "measures": "ElevenLabs eleven_flash_v2_5 live check through the local key server: lines that came back as audio with no error",
+      "denominator": "5 lines",
+      "status": "verified",
+      "source": "PROGRESS '## Gate results', row '21:42 EST, ElevenLabs live gate' (5 lines through POST /api/tts: 5/5 audio/mpeg, no 4xx; first audio ms 445, 167, 166, 176, 184); README.md Voice row"
+    },
+    {
+      "id": "elevenlabs_first_audio_median_ms",
+      "value": "176",
+      "unit": "ms",
+      "measures": "median time to first audio over the 5 live-check lines (445, 167, 166, 176, 184 ms)",
+      "denominator": "5 lines",
+      "status": "verified",
+      "source": "PROGRESS '## Gate results', row '21:42 EST, ElevenLabs live gate' (5 lines through POST /api/tts: 5/5 audio/mpeg, no 4xx; first audio ms 445, 167, 166, 176, 184); README.md Voice row"
     }
   ]
 }
