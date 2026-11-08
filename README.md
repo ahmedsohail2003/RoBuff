@@ -29,7 +29,7 @@ npm test               # unit tests (Vitest)
 npx playwright test    # browser tests
 ```
 
-The browser tests use the installed Google Chrome (Playwright runs with `channel: 'chrome'`), start their own dev server on port 5199 (set `E2E_PORT` to change it) and write screenshots to `web/evidence/` (git-ignored). The photo and fake-camera cases in `e2e/s3-hand.spec.ts` need a sample photo that is not in this repo; see [THIRD_PARTY.md](THIRD_PARTY.md). More detail on running: [RUN.md](RUN.md).
+The browser tests use the installed Google Chrome (Playwright runs with `channel: 'chrome'`), start their own dev server on port 5199 (set `E2E_PORT` to change it) and write screenshots to `web/evidence/` (git-ignored). No photo or download is needed: the hand-model and fake-camera cases in `e2e/s3-hand.spec.ts` paint the scripted hand's 21 points at test time (see [THIRD_PARTY.md](THIRD_PARTY.md)). More detail on running: [RUN.md](RUN.md).
 
 ## Modes and keys
 
@@ -43,7 +43,7 @@ The browser tests use the installed Google Chrome (Playwright runs with `channel
 | Mode buttons, or M | Direct (no delay), Moon with the ghost off, Moon with the ghost on. Switching resets the scene. |
 | `?trial=1` | Trial mode: the app sets the order, counts down, times each grab and offers the results as CSV. |
 | V (hold), or the Hold to talk button | Voice commands, such as "stop", "Moon" or "give me a comet ice shard". The text box does the same. |
-| G | Cycles gravity. |
+| G | Cycles gravity, except with the mouse as input, where G is the grip key (use the gravity menu then). |
 | Space | Stops the arm: every joint and the jaw hold. Only the on-screen Resume button clears it. |
 | Gravity menu (bottom left) | Earth, Mars, Moon, Bennu, orbit, each with its source. |
 | Object panel (top right) | Type a request or pick a preset; the receipt shows every check. |
@@ -62,15 +62,17 @@ No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.
 | Object requests | Real AI when a key is set, else mocked | Gemini 3.8 Flash turns the request into a spec under a fixed schema (live check on 2026-11-07: 5 of 5 valid specs, median 3.9 s). Without a key, an offline keyword parser answers, labelled "offline mock". Either way, code decides what may spawn. |
 | Lift test | Simulated | A headless pick on a second copy of the same simulated arm. |
 | Mouse and synthetic hand | Simulated input | Labelled on screen; never counted in results. |
-| Earth-Moon delay and ghost arm | Simulated | Built. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
+| Earth-Moon delay and ghost arm | Simulated | Built and checked in unit and browser tests. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
 | Trial logger and results | Built, not yet run | The logger and the scoring scripts work on synthetic test data, which is never counted. No real trials have been logged. |
 | Voice | Offline | Hold-to-talk with the browser's speech recognition and an offline command grammar; spoken replies use the browser's voice, with captions. ElevenLabs is not connected (no key). |
 | Stop gesture | Built | Both hands open, held 0.4 s, freezes the arm (needs `?hands=2`); the Space key always works. Tested on replayed and synthetic hands, not yet on a real hand. |
 | Hand control feel | Untested | Tested with a scripted hand and a fake camera, not yet with a real hand on a webcam. |
+| Hosting | Local only | Runs on your own machine from `npm run dev`. Not deployed to Vultr or any other server. |
+| Demo video | The author's own recording | The submission video is the author's own recording of the app. The repo's `web/e2e/demo-path.spec.ts` recording is an automated browser test with scripted input, not the submission video. |
 
 ## Results
 
-Not run. The ghost test is one operator's logged grabs with the ghost on and off at 2.56 s delay, with its pass rule written down before any data. It has not run yet: ghost benefit: not tested (0 logged trials). The numbers that are measured so far are engineering checks (tracking time, pick height, lift tests, gravity drops), listed in [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+Not run. The ghost test is one operator's logged grabs with the ghost on and off at 2.56 s delay, with its pass rule written down before any data. It has not run yet: ghost benefit: not yet measured (0 logged trials). The numbers that are measured so far are engineering checks (tracking time, pick height, lift tests, gravity drops), listed in [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
 
 ## Limits
 
@@ -128,7 +130,8 @@ What they share with Robuff: the same public arm model (WorkCell and EmberHacks)
 - Both arms, the gravity, the contact and the light delay are simulated.
 - Object specs come from the offline keyword mock when no Gemini key is present; the on-screen badge says which source answered.
 - The voice uses the browser's own voice when no ElevenLabs key is present, labelled offline.
-- The tests use a scripted synthetic hand and a fake camera made from a still photo.
+- The tests use a scripted synthetic hand and a fake camera made from that hand's painted points.
+- The demo video is the author's own recording, in his own words. The `demo-path` browser test also records a video, with scripted input; it is a test, not the submission video.
 
 ## Credits
 
