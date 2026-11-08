@@ -77,3 +77,13 @@ Every feature in the app, the test that checks it, and the demo-video beat that 
 | Slides, printed PDF and teleprompter | `e2e/slides.spec.ts` |
 | Pre-judging smoke test | `npm run smoke` (from `web/`) |
 | Judging-table runbook | [docs/DEMO.md](DEMO.md) |
+
+## Added at the end of the build (21:40-21:55, tested by their builder; no separate check yet)
+
+| Feature | Status | Checked by |
+| --- | --- | --- |
+| Everyday object kinds (box, cylinder, sphere, cone) with a "Closest shape I can make" receipt line | built | `src/objects/test/everyday.test.ts`, `approximation.test.ts`; builder's live Gemini check (4 requests) |
+| Hand gain 1.4, mouse gain 1.5, faster smoothing (0.08 s) | built | `src/control/gains.ts` and the builder's still-hand and step tests |
+| Mouse: left click grips, right drag orbits, middle drag pans | built | builder's browser tests |
+| Webcam direction pinned to the default view, `?flip=1` for mirrored cameras | built | builder's sign test on every axis |
+| Delay modes put the 30 mm test rock back automatically | built | builder's browser test |

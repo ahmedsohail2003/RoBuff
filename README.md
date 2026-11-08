@@ -35,12 +35,12 @@ The browser tests use the installed Google Chrome (Playwright runs with `channel
 
 | URL or control | What it does |
 | --- | --- |
-| `?input=webcam` | Your hand drives the arm. Pinch to close the jaw, open to release. With no `?input`, the app starts on the webcam if a camera exists, else on the mouse. If the camera is refused, the page says so and offers the mouse. |
+| `?input=webcam` | Your hand drives the arm. Pinch to close the jaw, open to release. With no `?input`, the app starts on the webcam if a camera exists, else on the mouse. If the camera is refused, the page says so and offers the mouse. Your right hand moves the arm to screen right; add `?flip=1` if your camera already mirrors its picture. The hand gain is 1.4, so about 70% of the earlier hand travel covers the same arm range, and a line on screen shows the range. |
 | `?input=mouse` | Move the mouse to steer, W and S to reach nearer or farther, left click (or G) to close or open the jaw. Right drag orbits the camera. |
 | `?input=synthetic` | A scripted hand picks up the cube by itself. Used by the tests; never counted as a result. |
 | `?speed=N` | Runs N simulated seconds per wall second (0.1 to 8). |
 | `?hands=2` | Tracks two hands instead of one, which turns on the stop gesture (both hands open, fingers spread, held 0.4 s). |
-| Mode buttons, or M | Direct (no delay), Moon with the ghost off, Moon with the ghost on. Switching resets the scene. |
+| Mode buttons, or M | Direct (no delay), Moon with the ghost off, Moon with the ghost on. Switching resets the scene; the delay modes put the 30 mm test rock back by themselves if an object was in the slot. |
 | `?trial=1` | Trial mode: the app sets the order, counts down, times each grab and offers the results as CSV. |
 | V (hold), or the Hold to talk button | Voice commands, such as "stop", "Moon" or "give me a comet ice shard". The text box does the same. |
 | G | Cycles gravity, except with the mouse as input, where G is the grip key (use the gravity menu then). |
@@ -58,8 +58,8 @@ No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.
 | Robot arm | Simulated | MuJoCo physics on the public MuJoCo Menagerie SO-ARM100 model. No real robot is connected. |
 | Grip and contact | Simulated | Friction contact in MuJoCo. Not validated against any real arm. Unreliable at very low gravity (see Limits). |
 | Gravity values | Real data, simulated effect | Earth, Mars and Moon from NASA's fact sheets; Bennu calculated from JPL data with spin ignored; orbit set to 0. |
-| Generated objects | Simulated | Procedural meshes made in the browser. Densities from published sample data; rock and iron friction are design values. |
-| Object requests | Real AI when a key is set, else mocked | Gemini 3.8 Flash turns the request into a spec under a fixed schema (live check on 2026-11-07: 5 of 5 valid specs, median 3.9 s). Without a key, an offline keyword parser answers, labelled "offline mock". Either way, code decides what may spawn. |
+| Generated objects | Simulated | Procedural meshes made in the browser: space things (asteroid, panel, dish, bus, fragment) and everyday things (box, cylinder, sphere, cone). When a request is a stand-in, the receipt says "Closest shape I can make". Densities from published sample data; rock and iron friction are design values. |
+| Object requests | Real AI when a key is set, else mocked | Gemini 3.8 Flash turns the request into a spec under a fixed schema (live check on 2026-11-07: 5 of 5 valid specs, median 3.9 s). Without a key, an offline keyword parser answers, labelled "offline mock". Everyday requests get the closest shape: in the builder's live check "Minecraft grass block" became a green box and "Tesla" a red car-shaped box (3.1 to 5.0 s per request), both then rescaled by the guardrail. Either way, code decides what may spawn. |
 | Lift test | Simulated | A headless pick on a second copy of the same simulated arm. |
 | Mouse and synthetic hand | Simulated input | Labelled on screen; never counted in results. |
 | Earth-Moon delay and ghost arm | Simulated | Built and checked in unit and browser tests. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
@@ -78,7 +78,7 @@ Not run. The ghost test is one operator's logged grabs with the ghost on and off
 
 The ghost test will have one operator, who built the system and knows the task, so learning and expectation can favour either condition and the result will not generalise to other people. The ghost and the true arm will run the same physics engine and arm model, so the only prediction error will be the mass and friction mismatch we chose, which is far smaller and simpler than the calibration, model and contact errors that real predictive displays face. There is no hardware, network jitter or video compression: the delay will be a constant 2.56 s, so the numbers describe this interface in simulation and nothing about any flight system.
 
-Other limits, all measured: at Bennu gravity a 5 cm/s sideways push lifted the resting cube 46.9 mm, which is a solver artefact, not real physics; scripted picks failed at 3 of 9 cube positions, all 8 to 12 cm off the arm's centre line; the pinch thresholds were set from test images and the scripted hand, not yet tuned on a real operator's pinch.
+Other limits, all measured: at Bennu gravity a 5 cm/s sideways push lifted the resting cube 46.9 mm, which is a solver artefact, not real physics; scripted picks failed at 3 of 9 cube positions, all 8 to 12 cm off the arm's centre line; the pinch thresholds were set from test images and the scripted hand, not yet tuned on a real operator's pinch. Everyday objects are stand-ins: a box has a square footprint (the spec has no depth field), so a car is a box. The control changes made at the end (the 1.4 hand gain, faster smoothing, mouse click to grip, the automatic test rock) were tested by their builder, with no separate check yet.
 
 No camera frames leave the laptop: hand tracking runs on device; Gemini receives only the typed or transcribed request text, and only when a key is configured.
 
