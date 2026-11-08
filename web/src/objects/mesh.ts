@@ -8,6 +8,8 @@ export interface ObjectMesh {
   indices: Uint32Array;
   /** Unit normal per vertex. */
   normals: Float32Array;
+  /** sRGB colour per vertex, 0..1, three per vertex. Only assemblies have it: one colour per part. */
+  colors?: Float32Array;
 }
 
 export interface BoxSize {
@@ -114,7 +116,9 @@ export function transformMesh(mesh: ObjectMesh, scale: number, shift: readonly [
     positions[i + 1] = mesh.positions[i + 1]! * scale + shift[1];
     positions[i + 2] = mesh.positions[i + 2]! * scale + shift[2];
   }
-  return { positions, indices: mesh.indices.slice(), normals: mesh.normals.slice() };
+  const out: ObjectMesh = { positions, indices: mesh.indices.slice(), normals: mesh.normals.slice() };
+  if (mesh.colors) out.colors = mesh.colors.slice();
+  return out;
 }
 
 /** Collects vertices and triangles for a generator. */

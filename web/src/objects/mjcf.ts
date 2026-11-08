@@ -1,5 +1,7 @@
 // A validated object as an MJCF fragment: one <mesh> asset with inline hull points,
-// and one free body with explicit mass and friction.
+// and one free body with explicit mass and friction. An assembly gets one mesh and one geom
+// per part, each its own convex hull with the mass of that part, so contacts follow the
+// real compound shape and the body's mass is the sum.
 
 import { MAX_HULL_VERT } from './limits';
 import type { Receipt } from './receipt';
@@ -9,7 +11,8 @@ export interface MjcfFragment {
   asset: string;
   /** Goes inside <worldbody>. */
   body: string;
-  names: { mesh: string; body: string; geom: string; joint: string };
+  /** For an assembly, mesh and geom are the first part's; parts lists every part's. */
+  names: { mesh: string; body: string; geom: string; joint: string; parts?: { mesh: string; geom: string; name: string }[] };
   mass_kg: number;
   friction: number;
   priority: boolean;
@@ -63,21 +66,42 @@ export function toMjcf(receipt: Receipt, options: MjcfOptions = {}): MjcfFragmen
   }
   const namer = options.namer ?? new MjcfNamer();
   const base = namer.next(options.name ?? `${receipt.spec.kind}_${receipt.spec.seed}`);
-  const names = { mesh: `${base}_mesh`, body: base, geom: `${base}_geom`, joint: `${base}_free` };
+  const names: MjcfFragment['names'] = { mesh: `${base}_mesh`, body: base, geom: `${base}_geom`, joint: `${base}_free` };
   const pos = options.pos ?? [0, 0, 0.002];
 
-  const vertex: string[] = [];
-  for (let i = 0; i < hull.points.length; i++) vertex.push(num(hull.points[i]!));
-
+  const vertices = (points: ArrayLike<number>): string => {
+    const out: string[] = [];
+    for (let i = 0; i < points.length; i++) out.push(num(points[i]!));
+    return out.join(' ');
+  };
   // maxhullvert is fixed at 64: lower values crashed MuJoCo in testing, so it is not an option.
-  const asset = `<mesh name="${names.mesh}" maxhullvert="${MAX_HULL_VERT}" vertex="${vertex.join(' ')}"/>`;
+  const meshTag = (name: string, points: ArrayLike<number>): string => `<mesh name="${name}" maxhullvert="${MAX_HULL_VERT}" vertex="${vertices(points)}"/>`;
   // MuJoCo takes the larger friction of two geoms of equal priority, and the pads are 1.0,
   // so only a deliberately slippery object gets priority="1".
   const priority = friction.priority ? ' priority="1"' : '';
+  const geomTag = (name: string, mesh: string, kg: number, color: string): string =>
+    `<geom name="${name}" type="mesh" mesh="${mesh}" mass="${kg.toPrecision(12)}" friction="${num(friction.mu)} 0.005 0.0001"${priority} rgba="${rgba(color)}"/>`;
+
+  let asset: string;
+  let geoms: string;
+  let hullVertices: number;
+  const parts = receipt.parts;
+  if (parts && parts.length > 0) {
+    names.parts = parts.map((part, i) => ({ mesh: `${base}_p${i + 1}_mesh`, geom: `${base}_p${i + 1}`, name: part.name }));
+    names.mesh = names.parts[0]!.mesh;
+    names.geom = names.parts[0]!.geom;
+    asset = parts.map((part, i) => meshTag(names.parts![i]!.mesh, part.hull.points)).join('');
+    geoms = parts.map((part, i) => geomTag(names.parts![i]!.geom, names.parts![i]!.mesh, part.mass_kg, part.color)).join('');
+    hullVertices = parts.reduce((n, part) => n + part.hull.points.length / 3, 0);
+  } else {
+    asset = meshTag(names.mesh, hull.points);
+    geoms = geomTag(names.geom, names.mesh, mass, receipt.spec.color);
+    hullVertices = hull.points.length / 3;
+  }
   const body =
     `<body name="${names.body}" pos="${pos.map(num).join(' ')}"${options.quat ? ` quat="${options.quat.map(num).join(' ')}"` : ''}>` +
     `<freejoint name="${names.joint}"/>` +
-    `<geom name="${names.geom}" type="mesh" mesh="${names.mesh}" mass="${mass.toPrecision(12)}" friction="${num(friction.mu)} 0.005 0.0001"${priority} rgba="${rgba(receipt.spec.color)}"/>` +
+    geoms +
     `</body>`;
-  return { asset, body, names, mass_kg: mass, friction: friction.mu, priority: friction.priority, hull_vertex_count: hull.points.length / 3 };
+  return { asset, body, names, mass_kg: mass, friction: friction.mu, priority: friction.priority, hull_vertex_count: hullVertices };
 }

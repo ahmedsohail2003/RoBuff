@@ -31,6 +31,12 @@ export const GRIP_Z_MIN = 0.0184;
 export const TIP_BELOW = 0.0144;
 /** [M, read from XML] Tip pad length along the finger. */
 export const PAD_LENGTH = 0.01;
+/** [M, read from XML] Half the width of the tip pads across the jaw axis (box half-sizes 4 to 6 mm). */
+export const PAD_HALF_WIDTH = 0.005;
+/** [M] The widest gap the jaw opens: 90 mm needs the jaw's 1.75 rad limit (see W_MAX). */
+export const JAW_MAX_GAP = 0.09;
+/** Research pipeline step 10: the lift test opens the jaw to the object's width plus this. Same value as JAW_EXTRA_OPENING in sim/liftTester.ts. */
+export const JAW_EXTRA_GAP = 0.016;
 /** [I] Pad length that must overlap the object. A design margin, not a measured failure. */
 export const MIN_PAD_OVERLAP = 0.004;
 /**

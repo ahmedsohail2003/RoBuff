@@ -1,6 +1,7 @@
 // The cheap pipeline, in order: sanity, hull, yaw, rescale, mass, friction, grip height.
 // It can rule an object out. It cannot prove a lift: only the simulated lift test can.
 
+import { buildAssemblyParts, mapHull, mergeParts, rotationMatrix, type BuiltPart } from './generate/assembly';
 import { generateMesh } from './generate/index';
 import { checkSanity, extents, gripFaceAngleDeg, hullWidthAtHeight, hullFillPercent, sweepYaw, transformPoints } from './geometry';
 import { convexHull, type ConvexHull } from './hull';
@@ -21,12 +22,14 @@ import {
   TIP_BELOW,
   W_MAX,
   W_MIN,
+  YAW_STEP_DEG,
   type Band,
 } from './limits';
 import { MATERIALS } from './materials';
+import { assemblyGripYaws } from './settle';
 import { transformMesh, type ObjectMesh } from './mesh';
 import { lines } from './messages';
-import { isRefused, type FrictionCheck, type Receipt, type ReceiptStep } from './receipt';
+import { isRefused, type FrictionCheck, type Receipt, type ReceiptPart, type ReceiptStep } from './receipt';
 import { normalizeSpec, type ObjectSpec } from './spec';
 import { say } from './format';
 
@@ -52,7 +55,118 @@ function step(code: ReceiptStep['code'], ok: boolean, measured: number | null, l
 /** Generate the mesh from a spec and run the pipeline. Never throws on bad input. */
 export function validate(rawSpec: unknown, options: ValidateOptions = {}): Receipt {
   const { spec, clamps } = normalizeSpec(rawSpec);
+  if (spec.kind === 'assembly') {
+    const placed = orientAssembly(buildAssemblyParts(spec), options.band === 'hard' ? HARD_BAND : HAND_BAND, MATERIALS[spec.material].density_g_cc * 1000);
+    return runPipeline(mergeParts(placed.parts), spec, options, clamps, placed);
+  }
   return runPipeline(generateMesh(spec), spec, options, clamps);
+}
+
+/** An assembly as the pipeline gets it: its parts, in the pose it will be built in. */
+export interface PlacedAssembly {
+  parts: BuiltPart[];
+  /** True when it was turned onto its side because no size fits standing up. */
+  laidDown: boolean;
+  /** Vertical stretch, 1 when none: a toy model made thicker than real so the fingertips can reach it. */
+  thickened: number;
+}
+
+/** Toy-model thickening tried, in order, when no uniform scale fits. Capped at double: past that it stops looking like the thing. */
+const THICKEN_STEPS = [1.25, 1.5, 1.75, 2] as const;
+
+/** Turns the parts (x, then y, then z), then stretches them vertically by `stretch`. Normals follow the inverse transpose. */
+function turnParts(parts: readonly BuiltPart[], rotDeg: readonly [number, number, number], stretch = 1): BuiltPart[] {
+  const r = rotationMatrix(rotDeg);
+  const map = (v: Float32Array, zScale: number, unit: boolean): Float32Array => {
+    const out = new Float32Array(v.length);
+    for (let i = 0; i < v.length; i += 3) {
+      const x = v[i]!;
+      const y = v[i + 1]!;
+      const z = v[i + 2]!;
+      const a = r[0]! * x + r[1]! * y + r[2]! * z;
+      const b = r[3]! * x + r[4]! * y + r[5]! * z;
+      const c = (r[6]! * x + r[7]! * y + r[8]! * z) * zScale;
+      const len = unit ? Math.hypot(a, b, c) || 1 : 1;
+      out[i] = a / len;
+      out[i + 1] = b / len;
+      out[i + 2] = c / len;
+    }
+    return out;
+  };
+  const m = [r[0]!, r[1]!, r[2]!, r[3]!, r[4]!, r[5]!, r[6]! * stretch, r[7]! * stretch, r[8]! * stretch];
+  return parts.map((p) => ({
+    ...p,
+    mesh: { ...p.mesh, positions: map(p.mesh.positions, stretch, false), normals: map(p.mesh.normals, 1 / stretch, true) },
+    hull: mapHull(p.hull, m, [0, 0, 0]),
+  }));
+}
+
+/** Union hull of the parts' own hulls: exact for the outline, and far fewer points than the merged mesh. */
+function partHulls(parts: readonly BuiltPart[]): { hulls: (ConvexHull | null)[]; union: ConvexHull | null } {
+  const hulls = parts.map((p) => (p.hull.volume > 0 ? p.hull : null));
+  const points: number[] = [];
+  for (const h of hulls) if (h) for (let i = 0; i < h.points.length; i++) points.push(h.points[i]!);
+  return { hulls, union: hulls.every(Boolean) ? convexHull(points) : null };
+}
+
+/**
+ * Long, thin things (a rifle, a rocket) have no size that fits the jaw standing up: shrunk to the
+ * length limit they are too thin to grip. Lying on its side, as it would on a table, it may fit.
+ * Upright is kept whenever it fits the hand-flown band; otherwise the first pose that does, then
+ * the first that fits the hard band. If none fits, upright, so the refusal quotes the shape as asked.
+ */
+function orientAssembly(parts: BuiltPart[], band: Band, rho: number): PlacedAssembly {
+  const poses: { rot: [number, number, number]; laidDown: boolean }[] = [
+    { rot: [0, 0, 0], laidDown: false },
+    { rot: [90, 0, 0], laidDown: true },
+  ];
+  /** The scale the pipeline would pick (same rules as runPipeline, steps 4 and 5), or null when none fits. */
+  const plannedScale = (candidate: BuiltPart[], b: Band): number | null => {
+    const { union } = partHulls(candidate);
+    if (!union) return null;
+    const sweep = sweepYaw(union.points);
+    const win = scaleWindow(sweep[0]!.width, extents(union.points).size[2], sweep[sweep.length - 1]!.width, b);
+    if (win.low > win.high) return null;
+    let scale = 1;
+    if (win.low > 1) scale = Math.min(win.high, win.low * (1 + INSIDE_MARGIN));
+    else if (win.high < 1) scale = Math.max(win.low, win.high * (1 - INSIDE_MARGIN));
+    const volume = candidate.reduce((v, p) => v + p.hull.volume, 0);
+    if (scale < 1 && volume * scale ** 3 * rho > b.m_max) {
+      const massScale = Math.cbrt((b.m_max * 0.98) / (volume * rho));
+      if (massScale >= win.low) scale = massScale;
+    }
+    return scale;
+  };
+  /**
+   * True when, at that scale and as built, a jaw yaw has the fingertip pads on enough material at
+   * both ends, and so does a yaw next to it: setting it down turns it a few degrees, so a grip that
+   * exists at one yaw only is not one to count on (a plane gripped nose to wingtip at one angle failed).
+   */
+  const graspable = (candidate: BuiltPart[], scale: number): boolean => {
+    const hulls = candidate.map((p) => ({ points: transformPoints(p.hull.points, scale), faces: p.hull.faces, volume: p.hull.volume }));
+    const box = extents(hulls.flatMap((h) => Array.from(h.points)));
+    const good = new Set(assemblyGripYaws(hulls, box.min[2], box.size[2]).filter((g) => g.feasible).map((g) => g.yaw_deg));
+    return [...good].some((y) => good.has((y + YAW_STEP_DEG) % 180) || good.has((y + 180 - YAW_STEP_DEG) % 180));
+  };
+  const bands = band.name === 'hand-flown' ? [band, HARD_BAND] : [band];
+  // Upright before lying down; at each pose real proportions before a thicker toy model, and the
+  // hand-flown band before the hard one. A plane's fuselage sits under the fingertips at real
+  // proportions, so it becomes a thicker toy; a rifle is under 1/20 as thick as it is long and
+  // has no grip standing up, so it lies down. The first pass asks for a size that fits and a
+  // grip the pads can reach; if none exists, the second pass takes the first size that fits at
+  // real proportions and leaves the verdict to the lift test.
+  for (const needGrip of [true, false]) {
+    for (const pose of poses) {
+      for (const stretch of needGrip ? [1, ...THICKEN_STEPS] : [1]) {
+        for (const b of bands) {
+          const candidate = pose.laidDown || stretch !== 1 ? turnParts(parts, pose.rot, stretch) : parts;
+          const scale = plannedScale(candidate, b);
+          if (scale !== null && (!needGrip || graspable(candidate, scale))) return { parts: candidate, laidDown: pose.laidDown, thickened: stretch };
+        }
+      }
+    }
+  }
+  return { parts, laidDown: false, thickened: 1 };
 }
 
 /** Run the pipeline on a mesh from any source. The spec supplies material and labels. Never throws on bad input. */
@@ -102,7 +216,7 @@ function scaleWindow(narrow: number, height: number, length: number, band: Band)
   };
 }
 
-function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOptions, clamps: string[]): Receipt {
+function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOptions, clamps: string[], assembly?: PlacedAssembly): Receipt {
   const steps: ReceiptStep[] = clamps.map((text) => step('SPEC_CLAMPED', false, null, null, '', `I adjusted the request: ${text}`, 'clamped'));
   const material = MATERIALS[spec.material];
   let band: Band = options.band === 'hard' ? HARD_BAND : HAND_BAND;
@@ -180,7 +294,19 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
   steps.push(step('SANITY_OK', true, sanity.vertex_count, 4, 'vertices', lines.sanityOk(sanity.vertex_count), 'none'));
 
   let points: ArrayLike<number> = mesh.positions;
-  if (sanity.vertex_count > MESH_MAX_INPUT_VERTICES) {
+  let parts0: { part: BuiltPart; hull: ConvexHull }[] | null = null;
+  if (assembly) {
+    const { hulls, union } = partHulls(assembly.parts);
+    const flat = assembly.parts.find((_, i) => !hulls[i]);
+    if (flat || !union) {
+      steps.push(step('BAD_MESH', false, 0, null, 'cm3', lines.badMesh(`has a part (${flat?.name ?? 'the outline'}) with no volume`, 'Every part must be a solid.'), 'refused'));
+      return finish();
+    }
+    parts0 = assembly.parts.map((part, i) => ({ part, hull: hulls[i]! }));
+    points = union.points;
+    if (assembly.laidDown) steps.push(step('LAID_DOWN', true, null, null, '', lines.laidDown(), 'note'));
+    if (assembly.thickened !== 1) steps.push(step('THICKENED', true, assembly.thickened, THICKEN_STEPS[THICKEN_STEPS.length - 1]!, 'times', lines.thickened(assembly.thickened), 'note'));
+  } else if (sanity.vertex_count > MESH_MAX_INPUT_VERTICES) {
     points = decimate(mesh.positions, MESH_MAX_INPUT_VERTICES);
     steps.push(step('DECIMATED', true, sanity.vertex_count, MESH_MAX_INPUT_VERTICES, 'vertices', lines.decimated(sanity.vertex_count, MESH_MAX_INPUT_VERTICES), 'note'));
   }
@@ -193,8 +319,15 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
   }
   const fill = hullFillPercent(hull0.volume, mesh.positions, mesh.indices);
   receipt.hull_fill_percent = fill;
-  steps.push(step('HULL_OK', true, hull0.volume * 1e6, null, 'cm3', lines.hullOk(hull0.volume * 1e6, hull0.points.length / 3), 'none'));
-  if (fill !== null && fill > HULL_FILL_WARN_PERCENT) {
+  if (parts0) {
+    const most = Math.max(...parts0.map((p) => p.hull.points.length / 3));
+    const volume = parts0.reduce((v, p) => v + p.hull.volume, 0);
+    steps.push(step('HULL_OK', true, volume * 1e6, null, 'cm3', lines.hullParts(parts0.length, most), 'none'));
+  } else {
+    steps.push(step('HULL_OK', true, hull0.volume * 1e6, null, 'cm3', lines.hullOk(hull0.volume * 1e6, hull0.points.length / 3), 'none'));
+  }
+  // An assembly collides part by part, so a hull fuller than the parts does not mean fingers on air.
+  if (!parts0 && fill !== null && fill > HULL_FILL_WARN_PERCENT) {
     steps.push(step('HULL_FILL', true, fill, HULL_FILL_WARN_PERCENT, 'percent', lines.hullFill(fill), 'note'));
   }
 
@@ -238,11 +371,14 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
   else if (fit.high < 1) scale = Math.max(fit.low, fit.high * (1 - INSIDE_MARGIN));
 
   const rho = density * 1000;
+  // Mass volume: the hull for one shape; for an assembly, the sum of its parts' own hulls, as MuJoCo weighs it.
+  const massVolume0 = parts0 ? parts0.reduce((sum, p) => sum + p.hull.volume, 0) : hull0.volume;
   let sizedForMass = false;
-  if (scale < MODEL_SCALE) {
-    const massAtScale = hull0.volume * scale ** 3 * rho;
+  // An assembly shrunk at all is a model of the thing, so it is sized for mass too.
+  if (scale < MODEL_SCALE || (parts0 && scale < 1)) {
+    const massAtScale = massVolume0 * scale ** 3 * rho;
     if (massAtScale > band.m_max) {
-      const massScale = Math.cbrt((band.m_max * 0.98) / (hull0.volume * rho));
+      const massScale = Math.cbrt((band.m_max * 0.98) / (massVolume0 * rho));
       if (massScale >= fit.low) {
         scale = massScale;
         sizedForMass = true;
@@ -280,8 +416,20 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
   receipt.narrow_width_mm = fin.narrow;
   receipt.hull_volume_cm3 = hull.volume * 1e6;
 
-  // 5. Mass from hull volume and density. Set explicitly in MJCF, never left to MuJoCo.
-  const mass = hull.volume * rho;
+  let partsVolume: number | null = null;
+  if (parts0) {
+    const parts: ReceiptPart[] = parts0.map(({ part, hull: h }) => {
+      const partHull: ConvexHull = { points: transformPoints(h.points, scale, shift), faces: h.faces, volume: h.volume * scale ** 3 };
+      return { name: part.name, shape: part.shape, color: part.color, mesh: transformMesh(part.mesh, scale, shift), hull: partHull, volume_cm3: partHull.volume * 1e6, mass_kg: partHull.volume * rho };
+    });
+    receipt.parts = parts;
+    partsVolume = parts.reduce((sum, p) => sum + p.hull.volume, 0);
+    const length = Math.max(receipt.size_mm[0], receipt.size_mm[1]);
+    steps.push(step('PARTS', true, parts.length, null, 'parts', lines.parts(parts.map((p) => p.name), scale, length, assembly!.thickened !== 1), 'note'));
+  }
+
+  // 5. Mass from hull volume (an assembly: each part's own hull) and density. Set explicitly in MJCF, never left to MuJoCo.
+  const mass = receipt.parts ? receipt.parts.reduce((sum, p) => sum + p.mass_kg, 0) : hull.volume * rho;
   receipt.mass_kg = mass;
   if (mass > band.m_max) {
     const lighter = Math.cbrt((band.m_max * 0.98) / mass);
@@ -291,7 +439,7 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
         : 'No size my jaw can hold is light enough in this material. Pick a lighter one.';
     steps.push(step('TOO_HEAVY', false, mass, band.m_max, 'kg', lines.tooHeavy(material.label, mass, band.m_max, band.name, HARD_BAND.m_max, suggestion), 'refused'));
   } else {
-    steps.push(step('MASS_OK', true, mass, band.m_max, 'kg', lines.massOk(material.label, hull.volume * 1e6, density, material.density_basis, mass, band.m_max, band.name), 'none'));
+    steps.push(step('MASS_OK', true, mass, band.m_max, 'kg', lines.massOk(material.label, (partsVolume ?? hull.volume) * 1e6, density, material.density_basis, mass, band.m_max, band.name), 'none'));
   }
 
   // 6. Friction, two parts. Weight: 2 * mu * CLAMP_N >= 2 * m * g, at the gravity given.
@@ -318,6 +466,10 @@ function runPipeline(mesh: ObjectMesh, spec: ObjectSpec, options: ValidateOption
   receipt.friction = friction;
   if (mu >= requiredMu) {
     steps.push(step('FRICTION_OK', true, mu, requiredMu, 'mu', lines.frictionOk(requiredMu, mu, gravity, squeeze?.angle_deg ?? null, squeezeMu, weightMu), 'none'));
+  } else if (parts0 && mu >= weightMu) {
+    // The squeeze angle is measured on the outline, but the pads touch the parts themselves, which
+    // may meet them square. Only the lift test on the real parts can tell, so it decides.
+    steps.push(step('FRICTION_OK', true, mu, requiredMu, 'mu', lines.frictionOutline(squeeze?.angle_deg ?? 0, squeezeMu, mu, weightMu), 'note'));
   } else {
     steps.push(step('SLIPS', false, mu, requiredMu, 'mu', lines.slips(requiredMu, material.label, mu, gravity, squeeze?.angle_deg ?? null, squeezeMu, weightMu), 'refused'));
   }

@@ -5,12 +5,14 @@ import type { Band } from './limits';
 import type { Material } from './materials';
 import type { ObjectMesh } from './mesh';
 import { fnv1a } from './rng';
-import type { ObjectSpec } from './spec';
+import type { ObjectSpec, PartShape } from './spec';
 
 export type StepCode =
   | 'SPEC_CLAMPED'
   | 'BAD_MESH'
   | 'SANITY_OK'
+  | 'LAID_DOWN'
+  | 'THICKENED'
   | 'DECIMATED'
   | 'HULL_OK'
   | 'HULL_FILL'
@@ -23,6 +25,7 @@ export type StepCode =
   | 'OUTSIDE_HAND_BAND'
   | 'SCALE_OK'
   | 'NO_SINGLE_SCALE'
+  | 'PARTS'
   | 'MASS_OK'
   | 'TOO_HEAVY'
   | 'FRICTION_OK'
@@ -108,6 +111,19 @@ export interface LiftStatus {
   attempts: LiftAttempt[];
 }
 
+/** One part of an assembly after sizing: what MuJoCo gets as one mesh geom with its own mass. */
+export interface ReceiptPart {
+  name: string;
+  shape: PartShape;
+  color: string;
+  /** Final, scaled part mesh, in the same frame as the receipt's mesh. */
+  mesh: ObjectMesh;
+  /** The part's own convex hull: its collision shape and its mass. */
+  hull: ConvexHull;
+  volume_cm3: number;
+  mass_kg: number;
+}
+
 export interface Receipt {
   schema: 's5-receipt-v1';
   verdict: Verdict;
@@ -139,6 +155,8 @@ export interface Receipt {
   /** Rest pose after settling, or null if it was never settled. The lift test uses it when present. */
   rest: RestPose | null;
   lift: LiftStatus;
+  /** Assemblies only: each part, in order. mass_kg is their sum. */
+  parts?: ReceiptPart[];
 }
 
 export function isRefused(steps: readonly ReceiptStep[]): boolean {
@@ -152,10 +170,14 @@ export function meshHash(mesh: ObjectMesh): string {
 
 /** A JSON-friendly summary: numbers and messages, mesh arrays replaced by counts and a hash. */
 export function receiptSummary(receipt: Receipt): Record<string, unknown> {
-  const { mesh, hull, ...rest } = receipt;
-  return {
+  const { mesh, hull, parts, ...rest } = receipt;
+  const summary: Record<string, unknown> = {
     ...rest,
     mesh: mesh ? { vertices: mesh.positions.length / 3, triangles: mesh.indices.length / 3, hash: meshHash(mesh) } : null,
     hull: hull ? { vertices: hull.points.length / 3, triangles: hull.faces.length / 3 } : null,
   };
+  if (parts) {
+    summary.parts = parts.map(({ mesh: m, hull: h, ...part }) => ({ ...part, vertices: m.positions.length / 3, hull_vertices: h.points.length / 3 }));
+  }
+  return summary;
 }

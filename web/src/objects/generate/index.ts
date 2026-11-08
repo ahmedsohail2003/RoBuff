@@ -2,6 +2,7 @@
 
 import type { ObjectMesh } from '../mesh';
 import type { ObjectKind, ObjectSpec } from '../spec';
+import { buildAssembly } from './assembly';
 import { buildAsteroid } from './asteroid';
 import { buildBox } from './box';
 import { buildBus } from './bus';
@@ -22,6 +23,7 @@ const BUILDERS: Readonly<Record<ObjectKind, (spec: ObjectSpec) => ObjectMesh>> =
   cylinder: buildCylinder,
   sphere: buildSphere,
   cone: buildCone,
+  assembly: buildAssembly,
 };
 
 export function generateMesh(spec: ObjectSpec): ObjectMesh {

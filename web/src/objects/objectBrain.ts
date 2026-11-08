@@ -111,7 +111,8 @@ export class ObjectBrain {
         headers: { 'content-type': 'application/json' },
         // mode 'object' tells the key server every line is an object to make; commands send no mode.
         body: JSON.stringify(mode === 'object' ? { text, mode } : { text }),
-        signal: AbortSignal.timeout(12_000),
+        // Past the key server's 20 s spec timeout, so its own plain answer arrives first.
+        signal: AbortSignal.timeout(22_000),
       });
       call.status = res.status;
       if (!res.ok) throw new Error((await res.text()).slice(0, 200) || `HTTP ${res.status}`);

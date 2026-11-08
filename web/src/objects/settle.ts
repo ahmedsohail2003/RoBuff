@@ -3,7 +3,7 @@
 
 import type { MainModule } from '@mujoco/mujoco';
 import { extents, sweepYaw } from './geometry';
-import { GRAVITY, ROLL_NOTE_MM, SETTLE_MAX_SECONDS } from './limits';
+import { GRAVITY, GRIP_Z_MIN, JAW_MAX_GAP, JAW_EXTRA_GAP, MIN_PAD_OVERLAP, PAD_HALF_WIDTH, PAD_LENGTH, ROLL_NOTE_MM, SETTLE_MAX_SECONDS, TIP_BELOW, W_MAX, W_MIN, YAW_STEP_DEG } from './limits';
 import { lines } from './messages';
 import { MjcfNamer, toMjcf, type MjcfFragment } from './mjcf';
 import type { Receipt, ReceiptStep, RestPose } from './receipt';
@@ -92,15 +92,178 @@ export function restPoseOf(receipt: Receipt, position: readonly number[], quat: 
   const rested = hullAtPose(receipt.hull!.points, position, quat);
   const box = extents(rested);
   const sweep = sweepYaw(rested);
+  let yaws = sweep.map((s) => s.yaw_deg);
+  if (receipt.parts && receipt.parts.length > 0) {
+    // An assembly's outline says little about where the pads land: rank yaws by the parts themselves.
+    const parts = receipt.parts.map((part) => ({ points: hullAtPose(part.hull.points, position, quat), faces: part.hull.faces, volume: part.hull.volume }));
+    const good = assemblyGripYaws(parts, box.min[2], box.size[2])
+      .filter((g) => g.feasible)
+      .map((g) => g.yaw_deg);
+    yaws = [...good, ...yaws.filter((y) => !good.includes(y))];
+  }
   return {
     scene,
     position_m: [position[0]!, position[1]!, position[2]!],
     quat: [quat[0]!, quat[1]!, quat[2]!, quat[3]!],
-    yaw_candidates_deg: sweep.map((s) => s.yaw_deg),
+    yaw_candidates_deg: yaws,
     narrow_width_mm: sweep[0]!.width * 1000,
     lowest_mm: box.min[2] * 1000,
     height_mm: box.size[2] * 1000,
   };
+}
+
+export interface AssemblyGrip {
+  yaw_deg: number;
+  /** Extent along the jaw axis of what the fingertip pads would touch, mm. 0 when nothing is in reach. */
+  grip_mm: number;
+  /** Whole extent along the jaw axis, mm: the jaw must open past it. */
+  span_mm: number;
+  /** How far up the pads the material reaches at the worse of the two contact ends, mm. */
+  overlap_mm: number;
+  feasible: boolean;
+}
+
+/** Material this close to a contact end (along the jaw axis) counts as what that pad presses on. */
+const CONTACT_END_TOL = 0.002;
+/** Heights sampled through the pad band, and offsets across the pad's width. */
+const BAND_LEVELS = 21;
+const ACROSS_OFFSETS = [-1, -0.5, 0, 0.5, 1] as const;
+
+export interface HullLike {
+  points: ArrayLike<number>;
+  faces: ArrayLike<number>;
+  volume: number;
+}
+
+/** Half-spaces n.x <= d of a hull's faces (wound counter-clockwise from outside). */
+function halfSpaces(hull: HullLike): Float64Array {
+  const p = hull.points;
+  const f = hull.faces;
+  const out = new Float64Array((f.length / 3) * 4);
+  for (let t = 0, k = 0; t + 2 < f.length; t += 3, k += 4) {
+    const a = f[t]! * 3;
+    const b = f[t + 1]! * 3;
+    const c = f[t + 2]! * 3;
+    const ux = p[b]! - p[a]!;
+    const uy = p[b + 1]! - p[a + 1]!;
+    const uz = p[b + 2]! - p[a + 2]!;
+    const vx = p[c]! - p[a]!;
+    const vy = p[c + 1]! - p[a + 1]!;
+    const vz = p[c + 2]! - p[a + 2]!;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    out[k] = nx;
+    out[k + 1] = ny;
+    out[k + 2] = nz;
+    out[k + 3] = nx * p[a]! + ny * p[a + 1]! + nz * p[a + 2]!;
+  }
+  return out;
+}
+
+/** Where the horizontal line origin + t * dir crosses a convex hull: [tMin, tMax], or null when it misses. */
+function lineThroughHull(planes: Float64Array, ox: number, oy: number, oz: number, dx: number, dy: number): [number, number] | null {
+  let lo = -Infinity;
+  let hi = Infinity;
+  for (let k = 0; k < planes.length; k += 4) {
+    const nd = planes[k]! * dx + planes[k + 1]! * dy;
+    const slack = planes[k + 3]! - (planes[k]! * ox + planes[k + 1]! * oy + planes[k + 2]! * oz);
+    if (Math.abs(nd) < 1e-15) {
+      if (slack < 0) return null;
+      continue;
+    }
+    const t = slack / nd;
+    if (nd > 0) hi = Math.min(hi, t);
+    else lo = Math.max(lo, t);
+    if (lo > hi) return null;
+  }
+  return lo <= hi ? [lo, hi] : null;
+}
+
+/**
+ * For each yaw: what the fingertip pads would touch. The lift test grips at the centre of mass
+ * across the jaw axis, at the pad band the grip height gives (fingertip TIP_BELOW under the grip
+ * point, PAD_LENGTH up from there). Lines along the jaw axis at heights through that band and
+ * offsets across the pad width are clipped exactly against each part's hull: what they cross is
+ * what the pads meet. A yaw is feasible when that grip is wide enough for the jaw to close on,
+ * the material at both contact ends reaches at least MIN_PAD_OVERLAP up the pads (a pad on only
+ * the curved top of a thin fuselage squeezes it out), and the whole object fits inside the open
+ * jaw. Feasible yaws come first, narrowest grip first.
+ */
+export function assemblyGripYaws(parts: readonly HullLike[], lowest: number, height: number): AssemblyGrip[] {
+  const gripZ = Math.max(height / 2, GRIP_Z_MIN);
+  const zLow = lowest + gripZ - TIP_BELOW;
+  const zHigh = zLow + PAD_LENGTH;
+  // Centre of mass, near enough: each part's hull-point mean, weighted by its volume.
+  let cx = 0;
+  let cy = 0;
+  let mass = 0;
+  for (const part of parts) {
+    const n = part.points.length / 3;
+    let sx = 0;
+    let sy = 0;
+    for (let i = 0; i + 2 < part.points.length; i += 3) {
+      sx += part.points[i]!;
+      sy += part.points[i + 1]!;
+    }
+    cx += (sx / n) * part.volume;
+    cy += (sy / n) * part.volume;
+    mass += part.volume;
+  }
+  cx /= mass || 1;
+  cy /= mass || 1;
+  const planes = parts.map(halfSpaces);
+  const out: AssemblyGrip[] = [];
+  for (let yaw = 0; yaw < 180; yaw += YAW_STEP_DEG) {
+    const a = (yaw * Math.PI) / 180;
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    let spanLo = Infinity;
+    let spanHi = -Infinity;
+    for (const part of parts) {
+      for (let i = 0; i + 2 < part.points.length; i += 3) {
+        const along = (part.points[i]! - cx) * ux + (part.points[i + 1]! - cy) * uy;
+        spanLo = Math.min(spanLo, along);
+        spanHi = Math.max(spanHi, along);
+      }
+    }
+    // Every crossing in the band: [tMin, tMax, z].
+    const hits: [number, number, number][] = [];
+    for (let level = 0; level < BAND_LEVELS; level++) {
+      const z = zLow + ((zHigh - zLow) * level) / (BAND_LEVELS - 1);
+      for (const s of ACROSS_OFFSETS) {
+        const ox = cx - uy * s * PAD_HALF_WIDTH;
+        const oy = cy + ux * s * PAD_HALF_WIDTH;
+        for (const p of planes) {
+          const hit = lineThroughHull(p, ox, oy, z, ux, uy);
+          if (hit) hits.push([hit[0], hit[1], z]);
+        }
+      }
+    }
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const [t0, t1] of hits) {
+      lo = Math.min(lo, t0);
+      hi = Math.max(hi, t1);
+    }
+    const grip = hi >= lo ? hi - lo : 0;
+    let topLo = -Infinity;
+    let topHi = -Infinity;
+    for (const [t0, t1, z] of hits) {
+      if (t0 <= lo + CONTACT_END_TOL) topLo = Math.max(topLo, z);
+      if (t1 >= hi - CONTACT_END_TOL) topHi = Math.max(topHi, z);
+    }
+    const overlap = grip > 0 ? Math.min(topLo, topHi) - zLow : 0;
+    const span = spanHi - spanLo;
+    out.push({
+      yaw_deg: yaw,
+      grip_mm: grip * 1000,
+      span_mm: span * 1000,
+      overlap_mm: overlap * 1000,
+      feasible: grip >= W_MIN && grip <= W_MAX && overlap >= MIN_PAD_OVERLAP - 1e-9 && span + JAW_EXTRA_GAP <= JAW_MAX_GAP,
+    });
+  }
+  return out.sort((p, q) => Number(q.feasible) - Number(p.feasible) || p.grip_mm - q.grip_mm || p.yaw_deg - q.yaw_deg);
 }
 
 /** Settle one validated object. Throws only if the receipt has nothing to export. */

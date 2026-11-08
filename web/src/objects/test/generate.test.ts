@@ -41,8 +41,8 @@ describe('procedural meshes', () => {
       }
       expect(seen.size, kind).toBe(200);
     }
-    // 2,000 meshes and hulls: about 3 s alone, longer than the 5 s default when the machine is busy.
-  }, 30_000);
+    // 2,200 meshes and hulls (ten kinds): about 3 s alone, but 19 s measured with other test runs on the machine, so a wide margin.
+  }, 120_000);
 
   it('meshes are closed and wound outward, at the requested width and height', () => {
     for (const kind of KINDS) {

@@ -1,21 +1,49 @@
 {
   "type": "object",
-  "description": "One console request. intent says what to do; for intent spawn the other fields describe one object. The sizes are requests: a validator rescales or refuses them.",
+  "description": "One console request. intent says what to do; for intent spawn the other fields describe one object, which may be an assembly of simple parts. The sizes are requests: a validator rescales or refuses them.",
   "properties": {
     "intent": {
       "type": "string",
-      "enum": ["spawn", "set_gravity", "home", "help", "none"],
+      "enum": [
+        "spawn",
+        "set_gravity",
+        "home",
+        "help",
+        "none"
+      ],
       "description": "spawn: make an object. set_gravity: change gravity. home: send the arm home. help: list commands. none: anything else. Never stop or resume: the browser handles those itself."
     },
     "gravity": {
       "type": "string",
-      "enum": ["earth", "mars", "moon", "bennu", "orbit", "none"],
+      "enum": [
+        "earth",
+        "mars",
+        "moon",
+        "bennu",
+        "orbit",
+        "none"
+      ],
       "description": "For set_gravity, which setting; otherwise none."
     },
     "kind": {
       "type": "string",
-      "enum": ["asteroid", "panel", "dish", "bus", "fragment", "box", "cylinder", "sphere", "cone"],
-      "description": "Which generator makes the shape. box, cylinder, sphere and cone are for everyday things; asteroid, panel, dish, bus and fragment are for space things."
+      "enum": [
+        "asteroid",
+        "panel",
+        "dish",
+        "bus",
+        "fragment",
+        "box",
+        "cylinder",
+        "sphere",
+        "cone",
+        "assembly"
+      ],
+      "description": "Which generator makes the shape. assembly is for recognisable things built from parts; box, cylinder, sphere and cone are for simple everyday things; asteroid, panel, dish, bus and fragment are for space things."
+    },
+    "name": {
+      "type": "string",
+      "description": "Short display name of the thing asked for, such as electric guitar, helicopter or skateboard."
     },
     "width_mm": {
       "type": "number",
@@ -23,14 +51,155 @@
       "maximum": 2000000000,
       "description": "Requested width across, in millimetres. Quote the size the person asked for, even if huge."
     },
-    "height_mm": { "type": "number", "minimum": 1, "maximum": 2000000000, "description": "Requested height, in millimetres." },
-    "roughness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Small surface detail, 0 smooth to 1 rough." },
-    "lumpiness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Large shape variation, 0 regular to 1 lumpy." },
-    "seed": { "type": "integer", "minimum": 0, "maximum": 2147483647, "description": "Random seed. Same seed, same shape." },
-    "material": { "type": "string", "enum": ["c_type_rock", "s_type_rock", "ice", "aluminium", "iron"], "description": "Material. It sets density and friction." },
-    "color": { "type": "string", "description": "Display color as #rrggbb." },
-    "why": { "type": "string", "description": "One short sentence on why these values fit the request." }
+    "depth_mm": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 2000000000,
+      "description": "Kind box only: depth front to back in millimetres, when it differs from the width."
+    },
+    "height_mm": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 2000000000,
+      "description": "Requested height, in millimetres."
+    },
+    "roughness": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Small surface detail, 0 smooth to 1 rough."
+    },
+    "lumpiness": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Large shape variation, 0 regular to 1 lumpy."
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647,
+      "description": "Random seed. Same seed, same shape."
+    },
+    "material": {
+      "type": "string",
+      "enum": [
+        "c_type_rock",
+        "s_type_rock",
+        "ice",
+        "aluminium",
+        "iron"
+      ],
+      "description": "Material. It sets density and friction."
+    },
+    "color": {
+      "type": "string",
+      "description": "Display color as #rrggbb."
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What the part is, one or two words: stock, barrel, wing, wheel."
+          },
+          "shape": {
+            "type": "string",
+            "enum": [
+              "box",
+              "cylinder",
+              "sphere",
+              "cone"
+            ],
+            "description": "Primitive shape of the part."
+          },
+          "size_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Real-world size in millimetres. box: length (x), width (y), height (z). cylinder: diameter, diameter, length along its axis (z before rotation). sphere: diameters. cone: base diameter, base diameter, height."
+          },
+          "pos_mm": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Centre of the part in the object frame, millimetres, x forward along the length, y across, z up."
+          },
+          "rot_deg": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Rotation in degrees about x, then y, then z. [0, 90, 0] lays a cylinder along x; tilt a box with a small x or y angle."
+          },
+          "color": {
+            "type": "string",
+            "description": "Colour of this part as #rrggbb."
+          }
+        },
+        "required": [
+          "name",
+          "shape",
+          "size_mm",
+          "pos_mm",
+          "color"
+        ],
+        "propertyOrdering": [
+          "name",
+          "shape",
+          "size_mm",
+          "pos_mm",
+          "rot_deg",
+          "color"
+        ]
+      },
+      "description": "Kind assembly only: 3 to 8 coloured parts at real-world proportions in millimetres. A validator rescales the whole object."
+    },
+    "why": {
+      "type": "string",
+      "description": "One short sentence on why these values fit the request."
+    }
   },
-  "required": ["intent", "gravity", "kind", "width_mm", "height_mm", "roughness", "lumpiness", "seed", "material", "color", "why"],
-  "propertyOrdering": ["intent", "gravity", "kind", "width_mm", "height_mm", "roughness", "lumpiness", "seed", "material", "color", "why"]
+  "required": [
+    "intent",
+    "gravity",
+    "kind",
+    "name",
+    "width_mm",
+    "height_mm",
+    "roughness",
+    "lumpiness",
+    "seed",
+    "material",
+    "color",
+    "why"
+  ],
+  "propertyOrdering": [
+    "intent",
+    "gravity",
+    "kind",
+    "name",
+    "width_mm",
+    "depth_mm",
+    "height_mm",
+    "roughness",
+    "lumpiness",
+    "seed",
+    "material",
+    "color",
+    "parts",
+    "why"
+  ]
 }

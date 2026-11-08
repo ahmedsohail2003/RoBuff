@@ -3,7 +3,7 @@
 
 import type { MaterialId } from './materials';
 import { hashText } from './rng';
-import { normalizeSpec, SEED_MAX, type ObjectKind, type ObjectSpec } from './spec';
+import { normalizeSpec, SEED_MAX, type ObjectKind, type ObjectSpec, type PartSpec } from './spec';
 
 export interface MockResult {
   source: 'offline-mock';
@@ -53,6 +53,51 @@ export const PRESETS: readonly Preset[] = [
   },
 ];
 
+/**
+ * Offline assemblies: a few everyday things the mock can build from parts, at real-world
+ * proportions in millimetres (round figures, not looked up). The guardrail rescales them.
+ */
+const part = (name: string, shape: PartSpec['shape'], size_mm: PartSpec['size_mm'], pos_mm: PartSpec['pos_mm'], color: string, rot_deg: PartSpec['rot_deg'] = [0, 0, 0]): PartSpec => ({ name, shape, size_mm, pos_mm, rot_deg, color });
+const WHEEL = '#1a1a1a';
+export const ASSEMBLY_TEMPLATES: readonly { pattern: RegExp; word: string; name: string; material: MaterialId; parts: PartSpec[] }[] = [
+  {
+    pattern: /\b(car|tesla|sedan|truck)\b/,
+    word: 'car',
+    name: 'car',
+    material: 'aluminium',
+    parts: [
+      part('body', 'box', [4700, 1900, 700], [0, 0, 550], '#c8102e'),
+      part('cabin', 'box', [2600, 1700, 550], [-200, 0, 1175], '#1f2a36'),
+      part('front left wheel', 'cylinder', [700, 700, 250], [1450, 825, 350], WHEEL, [90, 0, 0]),
+      part('front right wheel', 'cylinder', [700, 700, 250], [1450, -825, 350], WHEEL, [90, 0, 0]),
+      part('rear left wheel', 'cylinder', [700, 700, 250], [-1450, 825, 350], WHEEL, [90, 0, 0]),
+      part('rear right wheel', 'cylinder', [700, 700, 250], [-1450, -825, 350], WHEEL, [90, 0, 0]),
+    ],
+  },
+  {
+    pattern: /\b(plane|airplane|aeroplane|jet|airliner)\b/,
+    word: 'plane',
+    name: 'plane',
+    material: 'aluminium',
+    parts: [
+      part('fuselage', 'cylinder', [4000, 4000, 38000], [0, 0, 2000], '#e8ecf0', [0, 90, 0]),
+      part('wing', 'box', [6000, 36000, 500], [1000, 0, 1500], '#9aa3ad'),
+      part('tail fin', 'box', [4000, 400, 6000], [-17000, 0, 6500], '#1f4e9a'),
+      part('stabiliser', 'box', [3000, 12000, 400], [-17000, 0, 2600], '#9aa3ad'),
+    ],
+  },
+  {
+    pattern: /\b(mug|coffee cup)\b/,
+    word: 'mug',
+    name: 'mug',
+    material: 'aluminium',
+    parts: [
+      part('cup', 'cylinder', [80, 80, 95], [0, 0, 47.5], '#f2f2ee'),
+      part('handle', 'box', [22, 12, 60], [48, 0, 50], '#f2f2ee'),
+    ],
+  },
+];
+
 const KIND_WORDS: [RegExp, ObjectKind, string][] = [
   [/\b(needle|spike|rod|boom|mast)\b/, 'fragment', 'needle'],
   [/\b(panel|solar|array)\b/, 'panel', 'panel'],
@@ -84,11 +129,12 @@ const DEFAULT_MATERIAL: Record<ObjectKind, MaterialId> = {
   cylinder: 'aluminium',
   sphere: 'aluminium',
   cone: 'aluminium',
+  assembly: 'aluminium',
 };
 
 /** Height as a fraction of width when the text gives only one size. */
-const HEIGHT_RATIO: Record<ObjectKind, number> = { asteroid: 0.82, panel: 0.2, dish: 0.42, bus: 0.9, fragment: 0.75, box: 1, cylinder: 1.2, sphere: 1, cone: 1.1 };
-const DEFAULT_WIDTH_MM: Record<ObjectKind, number> = { asteroid: 40, panel: 50, dish: 48, bus: 42, fragment: 32, box: 34, cylinder: 34, sphere: 38, cone: 40 };
+const HEIGHT_RATIO: Record<ObjectKind, number> = { asteroid: 0.82, panel: 0.2, dish: 0.42, bus: 0.9, fragment: 0.75, box: 1, cylinder: 1.2, sphere: 1, cone: 1.1, assembly: 1 };
+const DEFAULT_WIDTH_MM: Record<ObjectKind, number> = { asteroid: 40, panel: 50, dish: 48, bus: 42, fragment: 32, box: 34, cylinder: 34, sphere: 38, cone: 40, assembly: 40 };
 
 /** Plain colour words, so "a green block" is green. */
 const COLOR_WORDS: [RegExp, string, string][] = [
@@ -138,6 +184,17 @@ export function specFromText(input: string): MockResult {
   const preset = PRESETS.find((p) => p.text.toLowerCase() === wanted || p.id === wanted || p.title.toLowerCase() === wanted);
   if (preset) {
     return { source: 'offline-mock', spec: { ...preset.spec }, matched: [`preset:${preset.id}`], clamps: [] };
+  }
+
+  // "An asteroid the size of a car" is an asteroid: a size comparison never picks a template.
+  const named = text.replace(/size of (an? |the )?[a-z]+/g, '');
+  const template = ASSEMBLY_TEMPLATES.find((t) => t.pattern.test(named));
+  if (template) {
+    matched.push(`assembly:${template.word}`);
+    const seed = hashText(text) % (SEED_MAX + 1);
+    const why = `Offline mock, not Gemini: matched assembly:${template.word}. Approximated: a ${template.name} from ${template.parts.length} simple parts.`;
+    const { spec, clamps } = normalizeSpec({ kind: 'assembly', name: template.name, width_mm: 40, height_mm: 40, roughness: 0.2, lumpiness: 0.1, seed, material: template.material, color: template.parts[0]!.color, why, parts: template.parts });
+    return { source: 'offline-mock', spec, matched, clamps };
   }
 
   let kind: ObjectKind = 'asteroid';

@@ -37,9 +37,10 @@ describe('offline mock and spec', () => {
     }
   });
 
-  it('schema lists every field as required, with enums and ranges', () => {
-    expect(OBJECT_SPEC_SCHEMA.required).toHaveLength(9);
-    expect(OBJECT_SPEC_SCHEMA.properties.kind.enum).toEqual(['asteroid', 'panel', 'dish', 'bus', 'fragment', 'box', 'cylinder', 'sphere', 'cone']);
+  it('schema lists every field but the optional depth_mm and parts as required, with enums and ranges', () => {
+    expect(OBJECT_SPEC_SCHEMA.required).toHaveLength(10);
+    expect(Object.keys(OBJECT_SPEC_SCHEMA.properties).filter((k) => !(OBJECT_SPEC_SCHEMA.required as readonly string[]).includes(k))).toEqual(['depth_mm', 'parts']);
+    expect(OBJECT_SPEC_SCHEMA.properties.kind.enum).toEqual(['asteroid', 'panel', 'dish', 'bus', 'fragment', 'box', 'cylinder', 'sphere', 'cone', 'assembly']);
     expect(OBJECT_SPEC_SCHEMA.properties.material.enum).toEqual(Object.keys(MATERIALS));
     expect(OBJECT_SPEC_SCHEMA.properties.roughness).toMatchObject({ minimum: 0, maximum: 1 });
     expect(JSON.parse(JSON.stringify(OBJECT_SPEC_SCHEMA))).toEqual(OBJECT_SPEC_SCHEMA);

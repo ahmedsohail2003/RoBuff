@@ -1,6 +1,7 @@
 // Draws the spawned object's visual mesh (the generated shape, not the collision hull) on the
 // slot body's three.js group, so it moves with the simulated pose. Look by material: dark
-// faceted rock, stony rock, glassy ice, or brushed metal.
+// faceted rock, stony rock, glassy ice, or brushed metal. An assembly carries a colour per
+// vertex (one per part), drawn with a matte look so a red car body reads as red, not chrome.
 
 import * as THREE from 'three';
 import type { MaterialId } from '../objects/materials';
@@ -31,11 +32,25 @@ export function buildObjectMesh(receipt: Receipt): THREE.Mesh {
   geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(mesh.indices), 1));
   if (mesh.normals.length === mesh.positions.length) geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(mesh.normals), 3));
   else geometry.computeVertexNormals();
+  const parted = mesh.colors !== undefined && mesh.colors.length === mesh.positions.length;
+  if (parted) {
+    // Mesh colours are sRGB; three.js wants vertex colours linear.
+    const linear = new Float32Array(mesh.colors!.length);
+    const c = new THREE.Color();
+    for (let i = 0; i < linear.length; i += 3) {
+      c.setRGB(mesh.colors![i]!, mesh.colors![i + 1]!, mesh.colors![i + 2]!, THREE.SRGBColorSpace);
+      linear[i] = c.r;
+      linear[i + 1] = c.g;
+      linear[i + 2] = c.b;
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(linear, 3));
+  }
   const look = LOOKS[receipt.spec.material];
   const material = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(receipt.spec.color),
-    roughness: look.roughness,
-    metalness: look.metalness,
+    color: parted ? new THREE.Color(0xffffff) : new THREE.Color(receipt.spec.color),
+    vertexColors: parted,
+    roughness: parted ? Math.max(0.55, look.roughness) : look.roughness,
+    metalness: parted ? Math.min(0.2, look.metalness) : look.metalness,
     flatShading: look.flatShading,
     transparent: look.opacity < 1,
     opacity: look.opacity,

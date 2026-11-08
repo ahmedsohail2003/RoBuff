@@ -1,4 +1,4 @@
-// A box: a square-footprint block. lumpiness rounds its edges: 0 is nearly sharp (a game
+// A box: width by depth (square when no depth is given) by height. lumpiness rounds its edges: 0 is nearly sharp (a game
 // block), 1 is a soft, well-rounded brick. The seed nudges the rounding by under 1 percent.
 
 import { fitToBox, flatMesh, type ObjectMesh } from '../mesh';
@@ -40,6 +40,6 @@ export function buildBox(spec: ObjectSpec): ObjectMesh {
 
   const { points, triangles } = stackRings(outline, [...bottom, ...top]);
   const width = spec.width_mm / 1000;
-  fitToBox(points, { x: width, y: width, z: spec.height_mm / 1000 });
+  fitToBox(points, { x: width, y: (spec.depth_mm ?? spec.width_mm) / 1000, z: spec.height_mm / 1000 });
   return flatMesh(points, triangles);
 }

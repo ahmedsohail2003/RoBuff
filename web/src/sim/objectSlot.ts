@@ -165,11 +165,22 @@ export class ObjectSlot {
     this.receipt = receipt;
     const swapMs = performance.now() - t0;
 
-    const collisionHull = collisionHullOf(this.mujoco, model, fragment.names.mesh);
     let hullStep: ReceiptStep | null = null;
     const hullOk = receipt.steps.find((s) => s.code === 'HULL_OK');
-    if (collisionHull && hullOk && receipt.hull_volume_cm3 !== null) {
-      hullStep = { ...hullOk, message: lines.hullMeasured(receipt.hull_volume_cm3, receipt.hull.points.length / 3, collisionHull.volume_cm3, collisionHull.vertices) };
+    let collisionHull: SpawnReport['collisionHull'] = null;
+    if (fragment.names.parts && receipt.parts) {
+      // An assembly: every part is its own hull. Sum what MuJoCo loaded against what the mass used.
+      const each = fragment.names.parts.map((p) => collisionHullOf(this.mujoco, model, p.mesh));
+      if (each.every(Boolean)) {
+        collisionHull = { vertices: each.reduce((n, h) => n + h!.vertices, 0), volume_cm3: each.reduce((v, h) => v + h!.volume_cm3, 0) };
+        const used = receipt.parts.reduce((v, p) => v + p.volume_cm3, 0);
+        if (hullOk) hullStep = { ...hullOk, message: lines.partHullsMeasured(each.length, used, collisionHull.volume_cm3, collisionHull.vertices) };
+      }
+    } else {
+      collisionHull = collisionHullOf(this.mujoco, model, fragment.names.mesh);
+      if (collisionHull && hullOk && receipt.hull_volume_cm3 !== null) {
+        hullStep = { ...hullOk, message: lines.hullMeasured(receipt.hull_volume_cm3, receipt.hull.points.length / 3, collisionHull.volume_cm3, collisionHull.vertices) };
+      }
     }
 
     const settle = this.settle(receipt);
