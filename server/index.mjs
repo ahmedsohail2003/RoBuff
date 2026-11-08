@@ -3,6 +3,8 @@
 //   GET  /api/health  -> { ok, gemini: 'configured'|'missing', elevenlabs: 'configured'|'missing', ... }
 //   POST /api/spec    { text }  -> Gemini structured output: { source, model, intent, gravity, spec, latency_ms }
 //   POST /api/tts     { text (<= 160 chars), fixed? } -> ElevenLabs mp3 stream; fixed lines cached on disk
+//   POST /api/chat    { text, history (last 6 turns), state: { mode, gravity, lastObject, stopped } }
+//                     -> Gemini structured output: { source, model, reply (<= 200 chars), action: { type, value? }, latency_ms }
 // Keys come from web/.env (or the process environment). Their values are never logged or sent back.
 // Run: node server/index.mjs   (port 8787 on 127.0.0.1; PORT and HOST override)
 
@@ -21,9 +23,11 @@ export const TTS_MAX_CHARS = 160;
 export const SPEC_MAX_CHARS = 300;
 const BODY_MAX_BYTES = 4096;
 const UPSTREAM_TIMEOUT_MS = 10_000;
+/** A spec with parts is a longer answer: measured 7.9 to 9.9 s live (2026-11-07), and one plane request passed 10 s. */
+const SPEC_TIMEOUT_MS = 20_000;
 
 export const COMMAND_SCHEMA = JSON.parse(readFileSync(path.join(HERE, 'commandSchema.json'), 'utf8'));
-const SPEC_FIELDS = ['kind', 'width_mm', 'height_mm', 'roughness', 'lumpiness', 'seed', 'material', 'color', 'why'];
+const SPEC_FIELDS = ['kind', 'name', 'width_mm', 'depth_mm', 'height_mm', 'roughness', 'lumpiness', 'seed', 'material', 'color', 'parts', 'why'];
 
 const SYSTEM_PROMPT = [
   'You read one line typed or spoken by the operator of a simulated robot arm and answer with JSON only.',
@@ -31,13 +35,28 @@ const SYSTEM_PROMPT = [
   'intent set_gravity: they want Earth, Mars, Moon, Bennu or orbit gravity; put it in gravity.',
   'intent home: send the arm to its home pose. intent help: they ask what they can say. intent none: anything else.',
   'You can never stop or resume the arm; the browser handles stop itself. For any intent but spawn, fill the object fields with any valid values.',
-  'Kinds: box for boxy everyday things (cubes, game blocks, crates, books, phones, cars as a car-shaped box); its lumpiness rounds the edges, 0 sharp.',
-  'cylinder for cans, mugs, bottles, wheels and pucks. sphere for balls, oranges and marbles. cone for cones and funnels.',
+  'Kinds: box for simple one-colour boxy things (cubes, plain blocks, crates, books, phones); its lumpiness rounds the edges, 0 sharp; give depth_mm when it is not square from above.',
+  'cylinder for cans, bottles, wheels and pucks. sphere for balls, oranges and marbles. cone for cones and funnels. assembly for recognisable things built from parts, below.',
   'asteroid, panel, dish, bus and fragment are only for space things: rocks and asteroids, solar panels, antennas, satellites, debris.',
   'Use the colour the thing usually has, as #rrggbb.',
   'Any physical thing, a brand, a vehicle or a game item included, gets the closest kind and proportions.',
-  'When the kind only approximates the thing, start why with "Approximated:" and say what, for example "Approximated: a Tesla, as a car-shaped box."',
+  'When the kind only approximates the thing, start why with "Approximated:" and say what, for example "Approximated: a skateboard from 7 simple parts."',
   'why is one short plain sentence.',
+].join(' ');
+
+/** How to build a recognisable thing from parts. Sent with every spec call, so voice and panel build the same objects. */
+const PARTS_PROMPT = [
+  'Always give name: a short display name of the thing asked for, such as "electric guitar", "helicopter" or "skateboard".',
+  'Recognisable everyday or technical things (a rifle, a plane, a car, a mug, a chair, a rocket, a satellite, a guitar, a robot) get kind assembly with 3 to 8 coloured parts at real-world size in millimetres. Never shrink them yourself: the validator rescales the whole object.',
+  'Each part has name, shape (box, cylinder, sphere or cone), size_mm, pos_mm (the part centre; x along the length, y across, z up, the object resting on z = 0), optional rot_deg (degrees about x, then y, then z) and its own color.',
+  'size_mm: box is length, width, height; cylinder is diameter, diameter, length along its own axis, which is z before rotation, so rot_deg [0, 90, 0] lays it along x and [90, 0, 0] along y; sphere is three diameters; cone is base diameter, base diameter, height.',
+  'Parts touch or overlap so the object is one piece. width_mm is the overall length and height_mm the overall height. Material aluminium for most made things.',
+  'Choose the parts that make the thing recognisable from the side and from above: its main body, then what sticks out (barrels, wings, fins, handles, wheels, legs, rotors), each in its own colour, at its real place and proportion.',
+  'Example electric guitar: body box [450, 330, 50] at [-230, 0, 25] #b22222; neck box [480, 55, 25] at [235, 0, 30] maple #c8a165; headstock box [180, 80, 18] at [560, 0, 30] #c8a165.',
+  'Example helicopter: cabin sphere [3000, 2400, 2400] at [0, 0, 1500] in the livery colour; tail boom cylinder [500, 500, 6000] at [-4200, 0, 1900] rot [0, 90, 0]; main rotor box [11000, 300, 100] at [0, 0, 2800] #333333; tail fin box [900, 150, 1400] at [-7000, 0, 2400].',
+  'Example skateboard: deck box [800, 210, 15] at [0, 0, 72] #2e2e2e; two truck boxes [40, 180, 30] at [280, 0, 50] and [-280, 0, 50] #9a9a9a; four wheel cylinders [54, 54, 40] rot [90, 0, 0] at [280, 75, 27], [280, -75, 27], [-280, 75, 27] and [-280, -75, 27], #f2f2f2.',
+  'A thing whose colour changes by layer or face (an iced cake, a block with a different top, a two-tone crate) is an assembly with one part per colour: for example an iced cake is a sponge cylinder [240, 240, 90] at [0, 0, 45] #e8c27a with an icing cylinder [244, 244, 14] at [0, 0, 97] #fff4f0 on top.',
+  'Simple single shapes of one colour keep their own kinds and no parts: a ball is sphere, a can is cylinder, a one-colour cube or block is box. Space things keep the space kinds.',
 ].join(' ');
 
 /** Added when the line comes from the object panel, where every line is an object to make. */
@@ -134,7 +153,7 @@ function openApiVariant(node) {
 /** One Gemini structured-output call. Returns the parsed JSON object. */
 async function askGemini(key, text, fetchImpl, objectMode = false) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const system = objectMode ? `${SYSTEM_PROMPT} ${OBJECT_MODE_PROMPT}` : SYSTEM_PROMPT;
+  const system = `${SYSTEM_PROMPT} ${PARTS_PROMPT}${objectMode ? ` ${OBJECT_MODE_PROMPT}` : ''}`;
   const call = (generationConfig) =>
     fetchImpl(url, {
       method: 'POST',
@@ -144,7 +163,7 @@ async function askGemini(key, text, fetchImpl, objectMode = false) {
         contents: [{ role: 'user', parts: [{ text }] }],
         generationConfig,
       }),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(SPEC_TIMEOUT_MS),
     });
   let res = await call({ responseMimeType: 'application/json', responseJsonSchema: jsonSchemaVariant(COMMAND_SCHEMA), temperature: 0.4 });
   // Not run live yet (no key today): if this model rejects responseJsonSchema, try the older field once.
@@ -157,6 +176,114 @@ async function askGemini(key, text, fetchImpl, objectMode = false) {
     return JSON.parse(out);
   } catch {
     throw new HttpError(502, 'Gemini did not return JSON, so the app falls back to its offline mock.');
+  }
+}
+
+// ---- Live talk: POST /api/chat ----------------------------------------------------------------
+
+export const CHAT_REPLY_MAX_CHARS = 200;
+export const CHAT_HISTORY_TURNS = 6;
+export const CHAT_ACTIONS = ['spawn', 'gravity', 'mode', 'home', 'none'];
+const CHAT_GRAVITY = ['earth', 'mars', 'moon', 'bennu', 'orbit'];
+/** The delay panel's modes (web/src/delay/dualSim.ts DELAY_MODES). */
+const CHAT_MODES = ['direct', 'moon_ghost_off', 'moon_ghost_on'];
+
+export const CHAT_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string', description: 'What RoBuff mission control says aloud: at most 200 characters, one or two sentences.' },
+    action: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: CHAT_ACTIONS },
+        value: { type: 'string', description: 'spawn: a short description of the object; gravity: earth, mars, moon, bennu or orbit; mode: direct, moon_ghost_off or moon_ghost_on.' },
+      },
+      required: ['type'],
+    },
+  },
+  required: ['reply', 'action'],
+  propertyOrdering: ['reply', 'action'],
+};
+
+/**
+ * The gravity numbers are the app's own presets (web/src/objects/limits.ts GRAVITY); a test checks
+ * they match. They are the only numbers the model may quote besides those in the state.
+ */
+export const CHAT_SYSTEM_PROMPT = [
+  'You are RoBuff mission control, the voice of RoBuff: a robot arm that exists only in a browser simulation (MuJoCo physics). The operator talks to you hands-free and hears your reply spoken aloud.',
+  'Answer with JSON only: reply and action.',
+  'reply: at most 200 characters, one or two short sentences, friendly and plain, no lists, no markdown, no emoji.',
+  'Be honest: everything here is simulated. Say "in simulation" when you speak of what the arm or an object did or will do, and never claim a real arm.',
+  'Never invent numbers. Quote only numbers from the state or from these facts: gravity presets in this app, in metres per second squared, Earth 9.82, Mars 3.73, Moon 1.62, Bennu 0.000083 (an asteroid; calculated from JPL data), orbit 0 in the simulation. In the Earth-Moon delay modes the operator sees the arm as it was 1.28 seconds ago (simulated). If you do not know a number, say so.',
+  'Vary your wording and do not repeat an earlier reply. Talk about what they asked; do not bring up the jaw, the gripper or the stop button unless they ask.',
+  'action is what the app does. spawn, with value a short plain description of the object such as "a tennis ball", when they want an object made; the app checks it against the arm\'s limits and runs a simulated lift test, so say it will be checked, never that it fits.',
+  'gravity, with value earth, mars, moon, bennu or orbit, when they want the gravity changed. mode, with value direct, moon_ghost_off or moon_ghost_on, when they want the Earth-Moon delay mode off or on (moon_ghost_on adds the predicted ghost arm). home sends the arm to its home pose. none for questions and chat.',
+  'You can never stop or resume the arm: the app handles stop itself and only the on-screen Resume button clears it. When state.stopped is true, use action none for home and spawn and say Resume is on screen.',
+].join(' ');
+
+/** At most max characters: whole sentences if they fit, else whole words. */
+export function clipReply(text, max = CHAT_REPLY_MAX_CHARS) {
+  const line = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (line.length <= max) return line;
+  const cut = line.slice(0, max);
+  const sentence = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  if (sentence > max * 0.4) return cut.slice(0, sentence + 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[,;:]$/, '')}.`;
+}
+
+/** A model action the app can run, or none. */
+export function cleanChatAction(raw) {
+  const type = CHAT_ACTIONS.includes(raw?.type) ? raw.type : 'none';
+  const value = typeof raw?.value === 'string' ? raw.value.trim().slice(0, 200) : '';
+  if (type === 'spawn' && value) return { type, value };
+  if (type === 'gravity' && CHAT_GRAVITY.includes(value.toLowerCase())) return { type, value: value.toLowerCase() };
+  if (type === 'mode' && CHAT_MODES.includes(value)) return { type, value };
+  if (type === 'home') return { type };
+  return { type: 'none' };
+}
+
+/** The state and history the browser sent, trimmed to what the prompt needs. */
+function chatPrompt(body, text) {
+  const s = body?.state && typeof body.state === 'object' ? body.state : {};
+  const state = {
+    mode: CHAT_MODES.includes(s.mode) ? s.mode : 'direct',
+    gravity: CHAT_GRAVITY.includes(s.gravity) ? s.gravity : 'earth',
+    lastObject: typeof s.lastObject === 'string' && s.lastObject.trim() ? s.lastObject.trim().slice(0, 120) : null,
+    stopped: s.stopped === true,
+  };
+  const history = (Array.isArray(body?.history) ? body.history : [])
+    .filter((t) => t && (t.role === 'user' || t.role === 'robuff') && typeof t.text === 'string' && t.text.trim())
+    .slice(-CHAT_HISTORY_TURNS)
+    .map((t) => `${t.role === 'user' ? 'Operator' : 'RoBuff'}: ${t.text.replace(/\s+/g, ' ').trim().slice(0, 300)}`);
+  return [history.length ? `Earlier turns:\n${history.join('\n')}` : 'No earlier turns.', `State: ${JSON.stringify(state)}`, `Operator now: ${text}`].join('\n\n');
+}
+
+/** One Gemini structured-output call for live talk. Returns the parsed JSON object. */
+async function askGeminiChat(key, prompt, fetchImpl) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const call = (generationConfig) =>
+    fetchImpl(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
+      }),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  // A higher temperature than the spec call: the replies should not sound the same every time.
+  let res = await call({ responseMimeType: 'application/json', responseJsonSchema: jsonSchemaVariant(CHAT_SCHEMA), temperature: 0.8 });
+  if (res.status === 400) res = await call({ responseMimeType: 'application/json', responseSchema: openApiVariant(CHAT_SCHEMA), temperature: 0.8 });
+  if (!res.ok) throw new HttpError(502, `Gemini answered HTTP ${res.status}, so live talk knows only the offline commands for now.`);
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts ?? [];
+  const out = parts.map((p) => (typeof p?.text === 'string' ? p.text : '')).join('');
+  try {
+    return JSON.parse(out);
+  } catch {
+    throw new HttpError(502, 'Gemini did not return JSON, so live talk knows only the offline commands for now.');
   }
 }
 
@@ -195,6 +322,19 @@ export function createAppServer(options = {}) {
     const gravity = ['earth', 'mars', 'moon', 'bennu', 'orbit'].includes(raw?.gravity) ? raw.gravity : null;
     const objectSpec = intent === 'spawn' ? Object.fromEntries(SPEC_FIELDS.map((k) => [k, raw?.[k]])) : null;
     sendJson(res, 200, { source: 'gemini', model: GEMINI_MODEL, intent, gravity, spec: objectSpec, latency_ms });
+  }
+
+  async function chat(req, res) {
+    if (gemini === 'missing') throw new HttpError(503, 'Gemini is not configured on this server (no GEMINI_API_KEY), so live talk knows only the offline commands.');
+    const body = await readJsonBody(req);
+    const text = requestText(body, SPEC_MAX_CHARS);
+    if (!limits.takeSpec()) throw new HttpError(429, "Today's Gemini cap is used up, so live talk knows only the offline commands until midnight.");
+    const t0 = performance.now();
+    const raw = await askGeminiChat(config.geminiKey, chatPrompt(body, text), fetchImpl);
+    const latency_ms = Math.round(performance.now() - t0);
+    const reply = clipReply(raw?.reply);
+    if (!reply) throw new HttpError(502, 'Gemini sent no reply, so live talk knows only the offline commands for now.');
+    sendJson(res, 200, { source: 'gemini', model: GEMINI_MODEL, reply, action: cleanChatAction(raw?.action), latency_ms });
   }
 
   async function tts(req, res) {
@@ -244,12 +384,13 @@ export function createAppServer(options = {}) {
     try {
       if (!isAllowedOrigin(req.headers.origin, config.allowedOrigins)) throw new HttpError(403, 'This origin may not use the key server.');
       if (req.method === 'GET' && route === '/api/health') sendJson(res, 200, health());
-      else if (req.method === 'POST' && (route === '/api/spec' || route === '/api/tts')) {
+      else if (req.method === 'POST' && (route === '/api/spec' || route === '/api/tts' || route === '/api/chat')) {
         const ip = req.socket.remoteAddress ?? 'unknown';
         if (!limits.allowRequest(ip)) throw new HttpError(429, 'Too many requests: the limit is 30 a minute. Try again shortly.');
         if (route === '/api/spec') await spec(req, res);
+        else if (route === '/api/chat') await chat(req, res);
         else await tts(req, res);
-      } else throw new HttpError(404, 'Not found. Routes: GET /api/health, POST /api/spec, POST /api/tts.');
+      } else throw new HttpError(404, 'Not found. Routes: GET /api/health, POST /api/spec, POST /api/tts, POST /api/chat.');
     } catch (error) {
       const status = error instanceof HttpError ? error.status : error?.name === 'TimeoutError' ? 504 : 500;
       const message = error instanceof HttpError ? error.message : status === 504 ? 'The upstream service timed out.' : 'The key server hit an error.';

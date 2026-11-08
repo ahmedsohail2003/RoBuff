@@ -136,3 +136,105 @@ test('mode object: the object panel always gets a spawn spec, even when Gemini a
   assert.equal(command.spec, null);
   assert.doesNotMatch(calls[1].systemInstruction.parts[0].text, /object panel/);
 });
+
+// ---- POST /api/chat (live talk) ----
+
+const geminiReply = (obj) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }), { status: 200 });
+
+test('chat with no key: 503 with a plain message, and the route is listed', async () => {
+  const { base, lines } = await start({ config: NO_KEYS });
+  const res = await post(base, '/api/chat', { text: "what's the gravity on the moon?", history: [], state: { mode: 'direct', gravity: 'earth', lastObject: null, stopped: false } });
+  assert.equal(res.status, 503);
+  assert.match(res.headers.get('content-type'), /text\/plain/);
+  assert.match(await res.text(), /Gemini is not configured.*offline commands/);
+  assert.match(await (await fetch(`${base}/nope`)).text(), /POST \/api\/chat/);
+  assert.ok(lines.some((l) => l.startsWith('POST /api/chat 503')));
+});
+
+test('chat with a stubbed Gemini: { reply, action }; state and history reach the prompt; the key stays in a header', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) });
+    return geminiReply({ reply: 'On the Moon the simulation uses 1.62 metres per second squared.', action: { type: 'none' } });
+  };
+  const { base, lines } = await start({ config: FAKE_KEYS, fetchImpl });
+  const history = Array.from({ length: 9 }, (_, i) => ({ role: i % 2 ? 'robuff' : 'user', text: `turn ${i}` }));
+  const res = await post(base, '/api/chat', { text: "what's the gravity on the moon?", history, state: { mode: 'moon_ghost_on', gravity: 'mars', lastObject: 'a tennis ball', stopped: false } });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.source, 'gemini');
+  assert.equal(body.model, 'gemini-3.8-flash');
+  assert.equal(body.reply, 'On the Moon the simulation uses 1.62 metres per second squared.');
+  assert.deepEqual(body.action, { type: 'none' });
+  assert.equal(typeof body.latency_ms, 'number');
+  const sent = calls[0].body;
+  assert.match(calls[0].url, /gemini-3\.8-flash:generateContent$/);
+  assert.equal(calls[0].init.headers['x-goog-api-key'], 'test-gemini-value');
+  assert.ok(!calls[0].url.includes('test-gemini-value'));
+  assert.match(sent.systemInstruction.parts[0].text, /RoBuff mission control/);
+  assert.match(sent.systemInstruction.parts[0].text, /in simulation/);
+  assert.deepEqual(sent.generationConfig.responseJsonSchema.required, ['reply', 'action']);
+  assert.deepEqual(sent.generationConfig.responseJsonSchema.properties.action.properties.type.enum, ['spawn', 'gravity', 'mode', 'home', 'none']);
+  const prompt = sent.contents[0].parts[0].text;
+  assert.match(prompt, /"mode":"moon_ghost_on","gravity":"mars","lastObject":"a tennis ball","stopped":false/);
+  assert.match(prompt, /Operator now: what's the gravity on the moon\?/);
+  // Only the last 6 turns go to the model.
+  assert.ok(!prompt.includes('turn 2'));
+  for (let i = 3; i < 9; i++) assert.ok(prompt.includes(`turn ${i}`));
+  assert.ok(lines.every((l) => !l.includes('test-')));
+  assert.ok(!JSON.stringify(body).includes('test-gemini-value'));
+});
+
+test('chat: actions are checked, the reply is cut to 200 characters, bad JSON is a 502', async () => {
+  const answers = [
+    { reply: 'Switching to Mars in simulation.', action: { type: 'gravity', value: 'Mars' } },
+    { reply: 'Making it.', action: { type: 'spawn', value: '  a tennis ball ' } },
+    { reply: 'Delay on.', action: { type: 'mode', value: 'moon_ghost_on' } },
+    { reply: 'Home.', action: { type: 'home', value: 'ignored' } },
+    { reply: 'No.', action: { type: 'gravity', value: 'jupiter' } },
+    { reply: 'No.', action: { type: 'stop' } },
+    { reply: `${'Word '.repeat(30)}first. ${'More words here '.repeat(20)}`, action: { type: 'none' } },
+  ];
+  let n = 0;
+  const fetchImpl = async () => (n < answers.length ? geminiReply(answers[n++]) : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'not json' }] } }] }), { status: 200 }));
+  const { base } = await start({ config: FAKE_KEYS, fetchImpl });
+  const ask = async () => (await post(base, '/api/chat', { text: 'something the grammar does not know' })).json();
+  assert.deepEqual((await ask()).action, { type: 'gravity', value: 'mars' });
+  assert.deepEqual((await ask()).action, { type: 'spawn', value: 'a tennis ball' });
+  assert.deepEqual((await ask()).action, { type: 'mode', value: 'moon_ghost_on' });
+  assert.deepEqual((await ask()).action, { type: 'home' });
+  assert.deepEqual((await ask()).action, { type: 'none' });
+  assert.deepEqual((await ask()).action, { type: 'none' });
+  const long = await ask();
+  assert.ok(long.reply.length <= 200, `reply is ${long.reply.length} characters`);
+  assert.match(long.reply, /first\.$/);
+  const bad = await post(base, '/api/chat', { text: 'x' });
+  assert.equal(bad.status, 502);
+  assert.match(await bad.text(), /did not return JSON/);
+  assert.equal((await post(base, '/api/chat', { text: '' })).status, 400);
+});
+
+test('chat shares the limits: the per-IP rate and the daily Gemini cap', async () => {
+  const fetchImpl = async () => geminiReply({ reply: 'Hello from mission control.', action: { type: 'none' } });
+  const { base } = await start({ config: FAKE_KEYS, fetchImpl, limits: createLimits({ perMinute: 3, specPerDay: 2 }) });
+  assert.equal((await post(base, '/api/chat', { text: 'hi' })).status, 200);
+  assert.equal((await post(base, '/api/chat', { text: 'hi' })).status, 200);
+  const capped = await post(base, '/api/chat', { text: 'hi' });
+  assert.equal(capped.status, 429);
+  assert.match(await capped.text(), /Gemini cap is used up/);
+  const limited = await post(base, '/api/chat', { text: 'hi' });
+  assert.equal(limited.status, 429);
+  assert.match(await limited.text(), /30 a minute|a minute/);
+});
+
+test("chat prompt quotes the app's own gravity presets (web/src/objects/limits.ts)", async () => {
+  const { readFileSync } = await import('node:fs');
+  const { CHAT_SYSTEM_PROMPT } = await import('../index.mjs');
+  const source = readFileSync(new URL('../../web/src/objects/limits.ts', import.meta.url), 'utf8');
+  const block = /export const GRAVITY = \{([^}]*)\}/.exec(source)?.[1] ?? '';
+  const value = (name) => Number(new RegExp(`${name}:\\s*([0-9.e-]+)`).exec(block)?.[1]);
+  assert.match(CHAT_SYSTEM_PROMPT, new RegExp(`Earth ${value('earth')}, Mars ${value('mars')}, Moon ${value('moon')}`));
+  assert.equal(value('bennu'), 0.000083);
+  assert.match(CHAT_SYSTEM_PROMPT, /Bennu 0\.000083/);
+  assert.equal(value('orbit'), 0);
+});
