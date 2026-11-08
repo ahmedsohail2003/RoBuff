@@ -15,7 +15,8 @@
     "predev": "node scripts/vendor-mediapipe.mjs",
     "prebuild": "node scripts/vendor-mediapipe.mjs",
     "prebuild:test": "node scripts/vendor-mediapipe.mjs",
-    "smoke": "echo npm run smoke is a placeholder: the pre-judging smoke test is not written yet && exit 1"
+    "smoke": "node scripts/smoke.mjs",
+    "slides:pdf": "node scripts/print-slides.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.2.2",

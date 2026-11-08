@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aftergrip: slides</title>
+<!--
+  Plain HTML slides, no framework. One <section class="slide"> per slide.
+  Keys: Right, Down, Page Down or Space for the next slide; Left, Up or Page Up for the previous one;
+  Home and End for the first and last. The URL hash (#3) holds the slide number.
+  Print (Ctrl+P, or web/scripts/print-slides.mjs) gives one slide per landscape page.
+  Every number on a slide also appears in README.md or HOW_IT_WORKS.md; web/e2e/slides.spec.ts checks that.
+-->
+<style>
+  :root {
+    --bg: #070a12;
+    --panel: #0f1522;
+    --line: #26324a;
+    --text: #e8edf6;
+    --muted: #a9b4c8;
+    --accent: #7cc4ff;
+    --ok: #7fe0a4;
+    --warn: #ffcf70;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+  body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; line-height: 1.35; }
+  .slide {
+    display: none;
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    padding: 3.5em 6em 4.2em;
+    font-size: min(1.6vw, 2.85vh);
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  h1 { font-size: 4.2em; margin: 0 0 0.2em; letter-spacing: 0.02em; }
+  h2 { font-size: 2.3em; margin: 0 0 0.7em; color: var(--accent); font-weight: 600; }
+  p { margin: 0 0 0.6em; }
+  ul { margin: 0 0 0.6em; padding-left: 1.2em; }
+  li { margin: 0 0 0.45em; }
+  .claim { font-size: 1.9em; color: var(--accent); margin-bottom: 0.8em; }
+  .lead { font-size: 1.35em; max-width: 46em; }
+  .meta { color: var(--muted); margin-top: 1.2em; }
+  .big { font-size: 4.2em; font-weight: 700; color: var(--accent); line-height: 1; margin: 0 0 0.15em; }
+  .quote { border-left: 0.25em solid var(--accent); padding: 0.4em 0 0.4em 1em; font-size: 1.3em; max-width: 44em; margin: 0.8em 0; }
+  .source { color: var(--muted); font-size: 0.85em; }
+  .loop { display: flex; gap: 1.2em; align-items: stretch; margin: 0.4em 0 1em; }
+  .stage { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 0.5em; padding: 1em 1.1em; }
+  .stage h3 { margin: 0 0 0.5em; font-size: 1.4em; color: var(--ok); }
+  .arrow { align-self: center; font-size: 2em; color: var(--muted); }
+  .cols { display: flex; gap: 2.5em; }
+  .cols > div { flex: 1; }
+  .receipt { list-style: none; padding: 0; columns: 2; column-gap: 2em; }
+  .receipt li::before { content: "\2713  "; color: var(--ok); font-weight: 700; }
+  table { border-collapse: collapse; font-size: 1.1em; margin-bottom: 0.8em; }
+  th, td { text-align: left; padding: 0.3em 1.2em 0.3em 0; border-bottom: 1px solid var(--line); }
+  td:nth-child(2) { white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  .pending { color: var(--warn); font-size: 1.6em; font-weight: 600; }
+  .dense { font-size: min(1.32vw, 2.35vh); }
+  .dense li { margin-bottom: 0.3em; }
+  .footer {
+    position: absolute; left: 6em; right: 6em; bottom: 1.6em;
+    display: flex; justify-content: space-between; color: var(--muted); font-size: 0.8em;
+    border-top: 1px solid var(--line); padding-top: 0.6em;
+  }
+  .footer .sim { color: var(--warn); font-weight: 700; letter-spacing: 0.08em; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; color: var(--accent); }
+  #nav {
+    position: fixed; right: 1em; top: 0.8em; display: flex; gap: 0.5em; align-items: center;
+    color: var(--muted); font-size: 14px;
+  }
+  #nav button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+    padding: 4px 10px; font: inherit; cursor: pointer;
+  }
+  #nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  @media print {
+    html, body { height: auto; background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .slide { display: flex; width: 13.333in; height: 7.5in; font-size: 20px; break-after: page; page-break-after: always; }
+    .slide.dense { font-size: 16.5px; }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    #nav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<section class="slide" id="s-title" aria-label="Title">
+  <h1>Aftergrip</h1>
+  <p class="claim">Pinch now, grip 2.56 seconds later.</p>
+  <p class="lead">Your bare hand, seen by a laptop webcam, drives a simulated robot arm on the Moon through the true Earth-Moon light delay, with a ghost arm that answers at once.</p>
+  <p class="meta">Ahmed Sohail Butt, solo. UB Hacking 2026.</p>
+  <div class="footer"><span class="sim">SIMULATION</span><span>No real robot is connected. Everything shown runs in the browser.</span></div>
+</section>
+
+<section class="slide" id="s-problem" aria-label="The problem">
+  <h2>The problem: light is slow at Moon distance</h2>
+  <p class="big">2.56 s</p>
+  <p class="lead">Earth to the Moon and back at the speed of light (mean distance 384,400 km, NASA NSSDC Moon fact sheet).</p>
+  <p class="quote">In a 2024 University of Bristol study, a robot arm run at delays up to 2.6 s got worse on every measure the authors recorded.<br><span class="source">Louca et al., ACM Transactions on Human-Robot Interaction (abstract).</span></p>
+  <p class="lead">It is physics, not bandwidth: no network upgrade removes it.</p>
+  <p class="source">Aftergrip is designed for students and science-centre visitors to feel it with only a laptop webcam. Nobody has used it yet.</p>
+  <div class="footer"><span class="sim">SIMULATION</span><span>The delay is modelled, not sent over a real link.</span></div>
+</section>
+
+<section class="slide" id="s-loop" aria-label="How it works">
+  <h2>How it works: one loop, Sense, Understand, Act</h2>
+  <div class="loop">
+    <div class="stage">
+      <h3>Sense</h3>
+      <p>Webcam frames go to the MediaPipe hand landmarker on your own machine: 21 points per hand.</p>
+      <p class="source">Fake-camera test: median 11 ms per frame, a hand in 123 of 123 frames (RTX 4050).</p>
+    </div>
+    <div class="arrow" aria-hidden="true">&rarr;</div>
+    <div class="stage">
+      <h3>Understand</h3>
+      <p>Palm position and pinch. A guardrail verdict for any requested object. The ghost's error in millimetres.</p>
+    </div>
+    <div class="arrow" aria-hidden="true">&rarr;</div>
+    <div class="stage">
+      <h3>Act</h3>
+      <p>Inverse kinematics on MuJoCo's own Jacobian, position servos, then friction contact.</p>
+      <p class="source">Physics at 240 frames per second headless (RTX 4050).</p>
+    </div>
+  </div>
+  <p class="lead">No camera frames leave the laptop. Gemini, when used, receives only the typed or spoken request text.</p>
+  <div class="footer"><span class="sim">SIMULATION</span><span>The arm is the public MuJoCo Menagerie SO-ARM100 model.</span></div>
+</section>
+
+<section class="slide" id="s-hand" aria-label="Hand control">
+  <h2>Hand control: common, and said so</h2>
+  <p class="lead">Hand tracking is only the input. What it drives is new here: an arm that grips by friction, so it can slip.</p>
+  <ul>
+    <li>Pinch closes the jaw below 0.25 and opens it above 0.38, once 2 frames agree. Set from a sample photo, not yet tuned on a real pinch.</li>
+    <li>Nothing glues the rock to the jaw: no weld, no parenting. A scripted pick of the 20 g cube rose 78.2 mm and held for 5.65 s.</li>
+    <li>It is not robust off the centre line: 6 of 9 cube positions passed.</li>
+    <li>Space stops the arm, and so do two open hands (experimental, <code>?hands=2</code>). Only Resume on screen clears a stop.</li>
+  </ul>
+  <div class="footer"><span class="sim">SIMULATION</span><span>Tested with a scripted hand and a fake camera; real-hand feel is the operator's to judge.</span></div>
+</section>
+
+<section class="slide" id="s-ghost" aria-label="Delay and ghost">
+  <h2>Delay and the ghost</h2>
+  <ul>
+    <li>Moon mode: your commands wait 1.28 s to reach the arm, and the view waits 1.28 s to reach you.</li>
+    <li>The ghost is a second simulation that runs your commands at once, drawn see-through over the delayed arm.</li>
+    <li>It does not know the rock. The true rock has density 2.3 g/cm&sup3; and friction 0.6; the ghost assumes 1.6 and 0.8. The gap between them is shown in millimetres.</li>
+    <li>The literature says prediction helps reaching more than contact, so the grasp is where the ghost can be wrong.</li>
+  </ul>
+  <p class="quote">Not a new idea: DLR flew predictive graphics on the ROTEX arm in 1993 at a 5 to 7 s delay, after 1980s work at JPL and MIT. New here is a laptop webcam and a browser.</p>
+  <div class="footer"><span class="sim">SIMULATION</span><span>Both arms run the same physics engine; only the rock's mass and friction differ.</span></div>
+</section>
+
+<section class="slide" id="s-objects" aria-label="Objects and the guardrail">
+  <h2>Objects on request, checked before they appear</h2>
+  <p class="claim">Gemini proposes; code decides.</p>
+  <div class="cols">
+    <div>
+      <p>The receipt ticks each check against the simulated arm's measured limits (jaw 10 to 70 mm, up to 0.30 kg):</p>
+      <ul class="receipt">
+        <li>Mesh is sane</li>
+        <li>Convex hull</li>
+        <li>Jaw direction</li>
+        <li>Scale</li>
+        <li>Mass</li>
+        <li>Friction</li>
+        <li>Grip height</li>
+        <li>Simulated lift test</li>
+      </ul>
+      <p class="source">The lift test runs the same arm on a hidden copy of the world; only a rise of at least 48 mm at the end of the hold passes.</p>
+    </div>
+    <div>
+      <ul>
+        <li>"An asteroid the size of Texas": too wide as asked, rescaled to a 55 mm model of 144 g, which lifted 76.0 mm.</li>
+        <li>"Solid iron, 60 mm": refused at 562 g.</li>
+        <li>"A shard of comet ice": refused. The pads meet it 14 degrees off square, so it needs friction 0.26; ice has 0.03.</li>
+      </ul>
+      <p class="source">With a key, Gemini turns the words into a spec under a JSON schema. Without one, an offline keyword mock does, and the screen says which.</p>
+    </div>
+  </div>
+  <div class="footer"><span class="sim">SIMULATION</span><span>"It can lift this" means the simulated arm can, not a real SO-ARM100.</span></div>
+</section>
+
+<section class="slide" id="s-gravity" aria-label="Gravity">
+  <h2>Gravity, changed live</h2>
+  <div class="cols">
+    <div>
+      <table>
+        <thead><tr><th scope="col">Place</th><th scope="col">m/s&sup2;</th><th scope="col">Source</th></tr></thead>
+        <tbody>
+          <tr><td>Earth</td><td>9.82</td><td>NASA NSSDC</td></tr>
+          <tr><td>Mars</td><td>3.73</td><td>NASA NSSDC</td></tr>
+          <tr><td>Moon</td><td>1.62</td><td>NASA NSSDC</td></tr>
+          <tr><td>Bennu</td><td>8.3e-5</td><td>calculated from JPL data, spin ignored</td></tr>
+          <tr><td>Orbit</td><td>0</td><td>set</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <ul>
+        <li>A cube dropped from 0.10 m landed after 0.354 s on the Moon (theory 0.351 s) and 0.144 s on Earth.</li>
+        <li>Bennu's escape speed is about 0.20 m/s. Flick the rock faster and the screen says it is gone. That is a label: the sim's gravity is uniform.</li>
+        <li>Contact at very low gravity is not trustworthy: a 5 cm/s push lifted the resting cube 46.9 mm on Bennu. The screen warns below 0.1 m/s&sup2;.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span class="sim">SIMULATION</span><span>Gravity values are real data; their effect is simulated.</span></div>
+</section>
+
+<section class="slide" id="s-results" aria-label="Results" data-results="pending">
+  <h2>Results</h2>
+  <p class="pending">Ghost gate: not yet measured.</p>
+  <p class="lead">0 logged trials, so I claim nothing about the ghost. The pass rule was written down before any data, and the result will be reported either way.</p>
+  <p>Measured so far, engineering checks only (not user results):</p>
+  <ul>
+    <li>Scripted friction pick: rose 78.2 mm, held 5.65 s.</li>
+    <li>Lift test, Bennu-like sample: rose 77.3 mm, held 2.02 s, both jaws touching.</li>
+    <li>Gravity drops match theory: 0.354 s against 0.351 s on the Moon.</li>
+    <li>Hand tracking: median 11 ms per frame on a fake camera.</li>
+  </ul>
+  <div class="footer"><span class="sim">SIMULATION</span><span>Results come only from logged runs.</span></div>
+</section>
+
+<section class="slide dense" id="s-disclosure" aria-label="Disclosure and credits">
+  <h2>Disclosure and credits</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><strong>Real:</strong> your hand, read on your own machine.</li>
+        <li><strong>Simulated:</strong> both arms, the delay, the gravity and the contact. No real robot.</li>
+        <li><strong>Mocked when no key is present:</strong> object specs (offline keyword mock) and the voice (browser voice or cached lines). Labelled on screen.</li>
+        <li><strong>New this weekend:</strong> all application code, from an empty repo; first commit 1:43 PM on November 7, 2026.</li>
+        <li><strong>Existed before:</strong> the MuJoCo Menagerie SO-ARM100 model (Apache-2.0), MuJoCo 4.0.0, MediaPipe, three.js, and NASA and JPL data.</li>
+      </ul>
+    </div>
+    <div>
+      <ul>
+        <li><strong>My earlier, different projects:</strong> WorkCell, EmberHacks, HandSignal and FleetLine. No code from them is reused.</li>
+        <li><strong>AI tools:</strong> Claude Code planned, summarised research, and wrote code, tests and docs under my direction and review. Gemini works inside the product on object specs. MediaPipe reads the hand.</li>
+        <li><strong>Credits:</strong> every library, model, data source and licence is in THIRD_PARTY.md.</li>
+        <li><strong>Code:</strong> github.com/ahmedsohail2003/buffalo-hackathon-2</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span class="sim">SIMULATION</span><span>Thank you. Try a pick?</span></div>
+</section>
+
+<nav id="nav" aria-label="Slide navigation">
+  <button type="button" id="prev" aria-label="Previous slide">Prev</button>
+  <span id="counter" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Next slide">Next</button>
+</nav>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
+    var counter = document.getElementById('counter');
+    var current = 0;
+
+    function show(index) {
+      current = Math.max(0, Math.min(slides.length - 1, index));
+      slides.forEach(function (slide, i) {
+        slide.classList.toggle('active', i === current);
+        slide.setAttribute('aria-hidden', i === current ? 'false' : 'true');
+      });
+      counter.textContent = (current + 1) + ' / ' + slides.length;
+      document.body.setAttribute('data-current', String(current + 1));
+      if (location.hash !== '#' + (current + 1)) history.replaceState(null, '', '#' + (current + 1));
+    }
+
+    function fromHash() {
+      var n = parseInt(location.hash.slice(1), 10);
+      return isNaN(n) ? 0 : n - 1;
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.target && event.target.tagName === 'BUTTON' && (event.key === ' ' || event.key === 'Enter')) return;
+      var key = event.key;
+      if (key === 'ArrowRight' || key === 'ArrowDown' || key === 'PageDown' || key === ' ') { show(current + 1); event.preventDefault(); }
+      else if (key === 'ArrowLeft' || key === 'ArrowUp' || key === 'PageUp') { show(current - 1); event.preventDefault(); }
+      else if (key === 'Home') { show(0); event.preventDefault(); }
+      else if (key === 'End') { show(slides.length - 1); event.preventDefault(); }
+    });
+    document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+    document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+    window.addEventListener('hashchange', function () { show(fromHash()); });
+    show(fromHash());
+  })();
+</script>
+</body>
+</html>
