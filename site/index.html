@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Robuff · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
-  <meta name="description" content="Robuff is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; so far that path is tested with a scripted hand, a photo and Chrome's fake camera, not a real hand. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
+  <title>RoBuff · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
+  <meta name="description" content="RoBuff is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; so far that path is tested with a scripted hand, a photo and Chrome's fake camera, not a real hand. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
   <meta name="theme-color" content="#0b0c0e">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Robuff">
-  <meta property="og:title" content="Robuff · Pick up a space rock with your bare hand">
+  <meta property="og:site_name" content="RoBuff">
+  <meta property="og:title" content="RoBuff · Pick up a space rock with your bare hand">
   <meta property="og:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026. Everything shown is a simulation, and a real hand has not been tested yet.">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Robuff · Pick up a space rock with your bare hand">
+  <meta name="twitter:title" content="RoBuff · Pick up a space rock with your bare hand">
   <meta name="twitter:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026; a real hand has not been tested yet.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect width='22' height='22' rx='6' fill='%230b0c0e'/%3E%3Cpath d='M7 6H5.5v10H7M15 6h1.5v10H15' stroke='white' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='11' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,13 +26,13 @@
   <!-- 1. Header -->
   <header class="site-header" id="top">
     <div class="wrap">
-      <a class="brand" href="#top" aria-label="Robuff, back to top">
+      <a class="brand" href="#top" aria-label="RoBuff, back to top">
         <svg viewBox="0 0 22 22" aria-hidden="true">
           <rect width="22" height="22" rx="6" fill="currentColor"/>
           <path class="mk-s" d="M7 6H5.5v10H7M15 6h1.5v10H15" stroke-width="1.6" fill="none"/>
           <circle class="mk-f" cx="11" cy="11" r="2.2"/>
         </svg>
-        <span>Robuff</span>
+        <span>RoBuff</span>
       </a>
       <nav class="nav" aria-label="Main">
         <div class="nav-links">
@@ -63,6 +63,7 @@
     <!-- 2. Hero -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-bg grid-dark">
+        <canvas class="space3d" id="hero-space" aria-hidden="true"></canvas>
         <canvas class="cloud" id="hero-cloud" aria-hidden="true"></canvas>
       </div>
       <div class="wrap hero-inner">
@@ -74,7 +75,7 @@
             <span class="grey scramble" id="hero-rotate" aria-hidden="true"
                   data-phrases='["with your bare hand.","by friction alone.","if a lift test passes."]'>with your bare hand.</span>
           </h1>
-          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. Robuff lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. So far only a scripted hand has flown it: the cube rose 78.4&nbsp;mm in 5 of 5 runs.</p>
+          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. RoBuff lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. So far only a scripted hand has flown it: the cube rose 78.4&nbsp;mm in 5 of 5 runs.</p>
           <div class="ctas">
             <a class="btn btn-light" href="#how">See how it works <span class="arrow" aria-hidden="true">&rarr;</span></a>
             <a class="btn btn-ghost" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2">Read the code</a>
@@ -145,15 +146,15 @@
                 <div><span>Slowest frame</span><span>17.5 ms</span></div>
                 <div><span>Frames with a hand</span><span>123 / 123</span></div>
               </div>
-              <p class="foot">Measured on Chrome's fake camera fed from a picture, in headless Chrome on an RTX&nbsp;4050 GPU. Not yet a real hand.</p>
+              <p class="foot">Measured on Chrome's fake camera fed from a picture, in headless Chrome on a laptop GPU. Not yet a real hand.</p>
             </article>
             <div class="connector" aria-hidden="true"><div class="dots"><i></i><i></i></div><span class="tag">21 points</span></div>
             <article class="lcard dark">
               <div class="tag">02 · Understand</div>
               <h3>Turn points into a steady command</h3>
-              <div class="big">5.39 → 1.80 mm</div>
-              <p class="cap">arm-target jitter in a unit test with a simulated still hand, before and after the One Euro filter</p>
-              <p>A One Euro filter smooths hard when the hand is still and lets fast moves through.</p>
+              <div class="big">One Euro filter</div>
+              <p class="cap">on every hand point: smooths hard when the hand is still, lightly when it moves</p>
+              <p>It was retuned tonight; its new jitter and response numbers are in the README, marked as builder-tested.</p>
               <ul class="checks">
                 <li>Jaw closes below a pinch of <span class="mono">0.25</span>, opens above <span class="mono">0.38</span></li>
                 <li>A lost hand freezes the arm and the grip</li>
@@ -176,7 +177,7 @@
             </article>
           </div>
           <div class="bracket" aria-hidden="true"></div>
-          <p class="bracket-cap">Hand-to-arm loop in the browser · 240 frames per second in headless Chrome on an RTX&nbsp;4050, physics at 500 steps per second</p>
+          <p class="bracket-cap">Hand-to-arm loop in the browser · 240 frames per second in headless Chrome on a laptop GPU, physics at 500 steps per second</p>
           <div class="rings">
             <div class="ring">
               <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="22"/><circle class="val" cx="26" cy="26" r="22" data-ring="1"/></svg>
@@ -200,7 +201,7 @@
         </div>
         <div class="track" id="track">
           <article class="scard" aria-labelledby="step1-title">
-            <canvas class="halftone" data-src="assets/img/s2.png" data-crop="0.364,0.148,0.268,0.557" data-focus="0.405,0.52,0.463,0.62" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
+            <canvas class="halftone" data-src="assets/img/space-direct.png" data-crop="0.17,0.04,0.5,0.84" data-focus="0.23,0.56,0.34,0.7" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
             <div class="copy">
               <div class="num">01</div>
               <h3 id="step1-title">Your hand drives the arm</h3>
@@ -210,33 +211,34 @@
               <div class="head"><span class="tag">Hand tracking</span></div>
               <div class="field"><span>input</span><b>fake camera (test)</b></div>
               <div class="field"><span>hand</span><b><span class="dot-live" aria-hidden="true"></span>found</b></div>
-              <div class="field"><span>tracking</span><b>11 ms (RTX 4050)</b></div>
+              <div class="field"><span>tracking</span><b>11 ms (laptop GPU)</b></div>
               <div class="field"><span>grip</span><b id="mini-grip">open</b></div>
               <div class="field"><span>points</span><b>21</b></div>
               <p class="mini-tag tag">Example values from the fake-camera test · real webcam not tested yet</p>
             </div>
-            <span class="sr-only">Screenshot of the simulated arm gripping the red test cube, steered by the app's scripted virtual hand, drawn as horizontal halftone lines.</span>
+            <span class="sr-only">Screenshot of the simulated arm on a dark lunar-style floor under a starfield, holding the red test cube, steered by the app's scripted virtual hand, drawn as horizontal halftone lines.</span>
           </article>
           <article class="scard" aria-labelledby="step2-title">
-            <canvas class="halftone" data-src="assets/img/s5-bennu.png" data-crop="0.334,0.148,0.303,0.649" data-focus="0.425,0.675,0.47,0.74" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
+            <canvas class="halftone" data-src="assets/img/space-bennu-sample.png" data-crop="0.17,0.04,0.5,0.84" data-focus="0.26,0.75,0.36,0.86" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
             <div class="copy">
               <div class="num">02</div>
               <h3 id="step2-title">Ask for an object</h3>
               <p>You type a request and it becomes a generated mesh. Before it appears, 7 checks decide whether the arm could hold it.</p>
             </div>
-            <div class="mini" aria-label="Example of the app's describe-an-object box">
+            <div class="mini" id="mini-describe" role="group" aria-label="Describe an object: pick a tested object to see its result">
               <div class="head"><span class="tag">Describe an object</span></div>
-              <div class="field input"><span class="mono" id="mini-type">an asteroid the size of Texas</span></div>
+              <label class="field input"><span class="sr-only">Type an object, then press Enter</span><input class="mono" id="mini-type" type="text" autocomplete="off" spellcheck="false" placeholder="an asteroid the size of Texas"></label>
               <div class="chips">
-                <span class="on">Bennu-like sample</span><span>S-type chip</span><span>CubeSat panel</span>
-                <span>Comms dish</span><span>Comet ice shard</span><span>Solid iron, 60 mm</span>
+                <button type="button" aria-pressed="false" data-object="Bennu-like sample">Bennu-like sample</button><button type="button" aria-pressed="false" data-object="S-type chip">S-type chip</button><button type="button" aria-pressed="false" data-object="CubeSat panel">CubeSat panel</button>
+                <button type="button" aria-pressed="false" data-object="Comms dish">Comms dish</button><button type="button" aria-pressed="false" data-object="Comet ice shard">Comet ice shard</button><button type="button" aria-pressed="false" data-object="Solid iron, 60 mm">Solid iron, 60 mm</button>
               </div>
+              <div class="mini-result" id="mini-result" aria-live="polite" hidden></div>
               <p class="mini-tag tag">Gemini 3.8 Flash with a key · offline mock without</p>
             </div>
-            <span class="sr-only">Close-up screenshot of the open jaw above a generated Bennu-like rock on the floor, drawn as halftone lines.</span>
+            <span class="sr-only">Screenshot of the simulated arm under a starfield, jaw open above a generated Bennu-like rock on the floor, drawn as halftone lines.</span>
           </article>
           <article class="scard" aria-labelledby="step3-title">
-            <canvas class="halftone" data-src="assets/img/s5-held.png" data-crop="0.376,0.162,0.254,0.541" data-focus="0.425,0.53,0.472,0.615" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
+            <canvas class="halftone" data-src="assets/img/space-bennu-release.png" data-crop="0.17,0.04,0.5,0.84" data-focus="0.31,0.54,0.46,0.73" data-place="0.36,0.0,0.94,0.68" aria-hidden="true"></canvas>
             <div class="copy">
               <div class="num">03</div>
               <h3 id="step3-title">The receipt, then the lift test</h3>
@@ -256,7 +258,7 @@
               </ul>
               <span class="pass" id="mini-pass">PASS</span>
             </div>
-            <span class="sr-only">Screenshot of the whole arm holding the Bennu-like rock up in its jaw, drawn as halftone lines.</span>
+            <span class="sr-only">Screenshot of the simulated arm under a starfield with the Bennu-like rock at its jaw, drawn as halftone lines.</span>
           </article>
         </div>
       </div>
@@ -320,7 +322,7 @@
               <svg viewBox="0 0 300 140"><g fill="#0b0c0e"><circle cx="150" cy="112" r="3.5"/><circle cx="128" cy="92" r="3"/><circle cx="118" cy="72" r="3"/><circle cx="112" cy="54" r="3"/><circle cx="138" cy="66" r="3"/><circle cx="136" cy="44" r="3"/><circle cx="135" cy="26" r="3"/><circle cx="154" cy="64" r="3"/><circle cx="155" cy="40" r="3"/><circle cx="156" cy="20" r="3"/><circle cx="170" cy="66" r="3"/><circle cx="173" cy="46" r="3"/><circle cx="175" cy="30" r="3"/><circle cx="182" cy="76" r="3"/><circle cx="192" cy="62" r="3"/><circle cx="200" cy="50" r="3"/></g><g fill="none" stroke="#0b0c0e" stroke-width="1.2"><path d="M150 112L128 92L118 72L112 54M150 112L138 66L136 44L135 26M150 112L154 64L155 40L156 20M150 112L170 66L173 46L175 30M150 112L182 76L192 62L200 50"/></g></svg>
             </div>
             <div class="top"><h3>MediaPipe Hand Landmarker</h3><span class="status ok">Working (real hand not tested yet)</span></div>
-            <p>Google's public hand-pose model: 21 points per hand from a camera image, on the laptop, so no frame is uploaded. Median 11&nbsp;ms a frame on Chrome's fake camera (RTX&nbsp;4050).</p>
+            <p>Google's public hand-pose model: 21 points per hand from a camera image, on the laptop, so no frame is uploaded. Median 11&nbsp;ms a frame on Chrome's fake camera (laptop GPU).</p>
           </article>
           <article class="tcard reveal">
             <div class="vis" aria-hidden="true">
@@ -361,7 +363,7 @@
         <h2 class="h2 reveal real-title" id="real-title">What's real. <span class="grey">Everything here is a simulation. This is what works, what is mocked, and what is not measured yet.</span></h2>
         <div class="real reveal">
           <table>
-            <caption class="sr-only">State of each part of Robuff</caption>
+            <caption class="sr-only">State of each part of RoBuff</caption>
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">What that means</th></tr></thead>
             <tbody>
               <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a picture and a fake camera: 123 of 123 frames found the hand. <b>A real hand on a real webcam has not been tested yet.</b></td></tr>
@@ -386,6 +388,7 @@
     <!-- 9. Final CTA -->
     <section class="wrap cta-wrap" id="demo" aria-labelledby="cta-title">
       <div class="cta grid-dark reveal">
+        <canvas class="space3d" id="cta-space" aria-hidden="true"></canvas>
         <canvas class="cloud" id="cta-cloud" aria-hidden="true"></canvas>
         <div class="inner">
           <h2 class="h2" id="cta-title">Feel the Moon's 2.56&nbsp;s delay. <span class="grey">In a browser, no robot.</span></h2>
@@ -406,9 +409,9 @@
         <div>
           <a class="brand" href="#top" style="color:var(--ink)">
             <svg viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="6" fill="#0b0c0e"/><path d="M7 6H5.5v10H7M15 6h1.5v10H15" stroke="#fff" stroke-width="1.6" fill="none"/><circle cx="11" cy="11" r="2.2" fill="#fff"/></svg>
-            <span>Robuff</span>
+            <span>RoBuff</span>
           </a>
-          <p>Robuff · Ahmed Sohail Butt, solo · UB Hacking 2026 · Apache-2.0</p>
+          <p>RoBuff · Ahmed Sohail Butt, solo · UB Hacking 2026 · Apache-2.0</p>
           <p>The name: robot + Buffalo, and a buff arm.</p>
         </div>
         <div>
@@ -427,7 +430,7 @@
       <div class="credits" id="credits">
         <p>Every line of application code was written during UB Hacking 2026; the repository's first commit is at 1:43 PM EST on November 7, after hacking opened at 1:30 PM.</p>
         <p>Related earlier projects by the same author: the WorkCell series, EmberHacks "The cell", HandSignal and FleetLine. No code from them is reused here. During planning their repositories were read for facts only (arm limits, package names), never copied; what carries over is experience and the same public arm model and hand-tracking library.</p>
-        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
+        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Page background: three.js (MIT), with a procedurally drawn Moon and starfield, illustrative only. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
         <p>Planned, coded and tested with Claude Code (Anthropic's Claude) under my direction and review. Inside the app, the MediaPipe hand landmarker runs in the browser, and Gemini 3.8 Flash reads typed object requests when a key is set on the key server.</p>
       </div>
     </div>

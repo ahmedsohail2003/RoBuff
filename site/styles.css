@@ -1,4 +1,4 @@
-/* Robuff project page. Written new for this site; the layout follows the design spec. */
+/* RoBuff project page. Written new for this site; the layout follows the design spec. */
 
 :root {
   --ink: #0b0c0e;
@@ -715,3 +715,53 @@ input[type='range']::-moz-range-thumb { width: 14px; height: 14px; border-radius
    the default and the one-note states fit; only iron at Bennu gravity adds a line. */
 @media (min-width: 901px) { .result { min-height: 216px; } }
 @media (min-width: 1101px) { .result { min-height: 197px; } }
+
+/* === objects-interactive === */
+/* Step-2 describe box: a real text input and preset buttons that keep the old chip look. */
+.mini .field.input { cursor: text; }
+.mini .field.input:focus-within { border-color: rgba(255, 255, 255, 0.4); }
+.mini .field input {
+  flex: 1; min-width: 0; width: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  font-family: var(--mono); font-size: 13px; color: #fff;
+}
+.mini .field input::placeholder { color: #fff; opacity: 0.85; }
+.mini .chips button {
+  font: inherit; font-size: 11.5px; padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--on-dark); background: transparent; cursor: pointer; transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.mini .chips button:hover { border-color: rgba(255, 255, 255, 0.45); color: #fff; }
+.mini .chips button.on, .mini .chips button[aria-pressed='true'] { background: #fff; color: var(--ink); border-color: #fff; }
+.mini .chips button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.mini-result { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); font-size: 12px; line-height: 17px; color: var(--on-dark); }
+.mini-result[hidden] { display: none; }
+.mini-result .mr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mini-result .mr-head b { color: #fff; font-weight: 600; font-size: 13px; }
+.mini-result .mr-v { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; }
+.mini-result .mr-v[data-v='pass'] { color: #7ee2a0; }
+.mini-result .mr-v[data-v='adjusted'] { color: #f2c46b; }
+.mini-result .mr-v[data-v='refused'] { color: #ff8a80; }
+.mini-result .mr-nums { display: flex; gap: 14px; margin-top: 4px; font-size: 11px; color: #fff; }
+.mini-result .mr-note { margin: 4px 0 0; }
+.tile { cursor: pointer; }
+/* === end objects-interactive === */
+
+/* === space-theme === */
+/* WebGL starfield + Moon (js/space3d.js) sits under the point cloud in the hero and the CTA band. */
+.hero canvas.space3d, .cta canvas.space3d {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none;
+}
+/* Faint star accents on the light sections: tiny low-alpha dots, decorative only (no text contrast change). */
+#loop, #timeline, #real {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(11, 12, 14, 0.16) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 78% 9%, rgba(11, 12, 14, 0.12) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 46% 64%, rgba(11, 12, 14, 0.10) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 91% 72%, rgba(11, 12, 14, 0.14) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 27% 88%, rgba(11, 12, 14, 0.10) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 63% 33%, rgba(11, 12, 14, 0.08) 0 1px, transparent 1.6px);
+  background-size: 340px 300px;
+}
+/* === end space-theme === */
+
+/* === moon-readability === the calculator glass sits over the three.js Moon; a darker fill keeps its text readable */
+.hero .glass { background: rgba(11, 12, 14, 0.72); }

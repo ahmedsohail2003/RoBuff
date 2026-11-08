@@ -73,7 +73,10 @@ export function mountHalftone(canvas) {
       const gg = d[i * 4 + 1];
       const b = d[i * 4 + 2];
       const t = b - r;
-      backdrop[i] = t >= 6 && t <= 24 && b >= gg && gg >= r && b > 90 ? 1 : 0;
+      // deep-space screenshots: near-black sky, and a dark blue-grey floor and its shadows
+      // (the arm's shells are far brighter, the rock is neutral, so neither is flooded)
+      const sky = r + gg + b < 45;
+      backdrop[i] = sky || (t >= 6 && t <= 30 && b >= gg && gg >= r && b >= 18 && b < 140) ? 1 : 0;
     }
     const outside = new Uint8Array(N);
     const queue = new Int32Array(N);

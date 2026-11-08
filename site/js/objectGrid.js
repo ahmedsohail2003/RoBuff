@@ -1,5 +1,9 @@
 // Object grid: one tile per request tested end to end in the browser. One tile is highlighted on a timer;
-// hover or keyboard focus takes over. The stats row shows that object's receipt and lift-test values.
+// hover or keyboard focus takes over, and a click pins it (the timer stops). The stats row shows that
+// object's receipt and lift-test values.
+// Shared selection with the step-2 mini panel: another script dispatches 'object-select' on document
+// with detail { index } to select and pin a tile; every change is announced as 'object-selected' with
+// detail { index, user } (user is false for the timer and the first paint).
 
 import { OBJECTS } from './data.js';
 
@@ -41,8 +45,9 @@ export function mountObjectGrid() {
   let active = -1;
   let timer = 0;
   let paused = false;
+  let pinned = -1; // index of the clicked tile, or -1 while the timer runs
 
-  function select(i) {
+  function select(i, user = false) {
     if (active >= 0) {
       tiles[active].classList.remove('active');
       tiles[active].setAttribute('aria-pressed', 'false');
@@ -58,11 +63,18 @@ export function mountObjectGrid() {
     st.lift.textContent = o.lift;
     st.verdict.textContent = o.verdict;
     st.verdict.dataset.v = o.verdict.toLowerCase();
+    document.dispatchEvent(new CustomEvent('object-selected', { detail: { index: i, user } }));
+  }
+
+  function pin(i) {
+    pinned = i;
+    clearInterval(timer);
+    select(i, true);
   }
 
   function startTimer() {
     clearInterval(timer);
-    if (reduce.matches) return;
+    if (reduce.matches || pinned >= 0) return;
     timer = setInterval(() => {
       if (!paused) select((active + 1) % tiles.length);
     }, 2200);
@@ -77,11 +89,21 @@ export function mountObjectGrid() {
       paused = true;
       select(i);
     });
-    t.addEventListener('click', () => select(i));
+    t.addEventListener('click', () => pin(i));
   });
-  host.addEventListener('pointerleave', () => (paused = false));
+  document.addEventListener('object-select', (e) => {
+    const i = e.detail && e.detail.index;
+    if (Number.isInteger(i) && i >= 0 && i < tiles.length) pin(i);
+  });
+  // Hover previews another tile; leaving the grid goes back to the pinned one.
+  host.addEventListener('pointerleave', () => {
+    paused = false;
+    if (pinned >= 0 && active !== pinned) select(pinned);
+  });
   host.addEventListener('focusout', (e) => {
-    if (!host.contains(e.relatedTarget)) paused = false;
+    if (host.contains(e.relatedTarget)) return;
+    paused = false;
+    if (pinned >= 0 && active !== pinned) select(pinned);
   });
 
   select(0);
