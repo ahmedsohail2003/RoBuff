@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aftergrip · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
-  <meta name="description" content="Aftergrip is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; so far that path is tested with a scripted hand, a photo and Chrome's fake camera, not a real hand. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
+  <title>Robuff · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
+  <meta name="description" content="Robuff is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; so far that path is tested with a scripted hand, a photo and Chrome's fake camera, not a real hand. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
   <meta name="theme-color" content="#0b0c0e">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Aftergrip">
-  <meta property="og:title" content="Aftergrip · Pick up a space rock with your bare hand">
+  <meta property="og:site_name" content="Robuff">
+  <meta property="og:title" content="Robuff · Pick up a space rock with your bare hand">
   <meta property="og:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026. Everything shown is a simulation, and a real hand has not been tested yet.">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Aftergrip · Pick up a space rock with your bare hand">
+  <meta name="twitter:title" content="Robuff · Pick up a space rock with your bare hand">
   <meta name="twitter:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026; a real hand has not been tested yet.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect width='22' height='22' rx='6' fill='%230b0c0e'/%3E%3Cpath d='M7 6H5.5v10H7M15 6h1.5v10H15' stroke='white' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='11' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,13 +26,13 @@
   <!-- 1. Header -->
   <header class="site-header" id="top">
     <div class="wrap">
-      <a class="brand" href="#top" aria-label="Aftergrip, back to top">
+      <a class="brand" href="#top" aria-label="Robuff, back to top">
         <svg viewBox="0 0 22 22" aria-hidden="true">
           <rect width="22" height="22" rx="6" fill="currentColor"/>
           <path class="mk-s" d="M7 6H5.5v10H7M15 6h1.5v10H15" stroke-width="1.6" fill="none"/>
           <circle class="mk-f" cx="11" cy="11" r="2.2"/>
         </svg>
-        <span>Aftergrip</span>
+        <span>Robuff</span>
       </a>
       <nav class="nav" aria-label="Main">
         <div class="nav-links">
@@ -74,7 +74,7 @@
             <span class="grey scramble" id="hero-rotate" aria-hidden="true"
                   data-phrases='["with your bare hand.","by friction alone.","if a lift test passes."]'>with your bare hand.</span>
           </h1>
-          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. Aftergrip lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. So far only a scripted hand has flown it: the cube rose 78.4&nbsp;mm in 5 of 5 runs.</p>
+          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. Robuff lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. So far only a scripted hand has flown it: the cube rose 78.4&nbsp;mm in 5 of 5 runs.</p>
           <div class="ctas">
             <a class="btn btn-light" href="#how">See how it works <span class="arrow" aria-hidden="true">&rarr;</span></a>
             <a class="btn btn-ghost" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2">Read the code</a>
@@ -361,7 +361,7 @@
         <h2 class="h2 reveal real-title" id="real-title">What's real. <span class="grey">Everything here is a simulation. This is what works, what is mocked, and what is not measured yet.</span></h2>
         <div class="real reveal">
           <table>
-            <caption class="sr-only">State of each part of Aftergrip</caption>
+            <caption class="sr-only">State of each part of Robuff</caption>
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">What that means</th></tr></thead>
             <tbody>
               <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a picture and a fake camera: 123 of 123 frames found the hand. <b>A real hand on a real webcam has not been tested yet.</b></td></tr>
@@ -405,9 +405,10 @@
         <div>
           <a class="brand" href="#top" style="color:var(--ink)">
             <svg viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="6" fill="#0b0c0e"/><path d="M7 6H5.5v10H7M15 6h1.5v10H15" stroke="#fff" stroke-width="1.6" fill="none"/><circle cx="11" cy="11" r="2.2" fill="#fff"/></svg>
-            <span>Aftergrip</span>
+            <span>Robuff</span>
           </a>
-          <p>Aftergrip · Ahmed Sohail Butt, solo · UB Hacking 2026 · Apache-2.0</p>
+          <p>Robuff · Ahmed Sohail Butt, solo · UB Hacking 2026 · Apache-2.0</p>
+          <p>The name: robot + Buffalo, and a buff arm.</p>
         </div>
         <div>
           <h3>On this page</h3>

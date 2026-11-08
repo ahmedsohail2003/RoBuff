@@ -1,6 +1,6 @@
 {
   "meta": {
-    "about": "Every number that appears on the Aftergrip project page, with what it measures and where it came from. Written by the site copywriter on 2026-11-07. Paths are relative to the repo root. PROGRESS = private/.autopilot/PROGRESS.md (only VERIFIED rows and verdict lines used for results). PROGRESS keeps growing, so it is cited by row label (step | owner | clock), verdict line (step VERIFIED clock) or section heading, never by line number. EVID = private/.autopilot/evidence/.",
+    "about": "Every number that appears on the Robuff project page, with what it measures and where it came from. Written by the site copywriter on 2026-11-07. Paths are relative to the repo root. PROGRESS = private/.autopilot/PROGRESS.md (only VERIFIED rows and verdict lines used for results). PROGRESS keeps growing, so it is cited by row label (step | owner | clock), verdict line (step VERIFIED clock) or section heading, never by line number. EVID = private/.autopilot/evidence/.",
     "status_values": {
       "verified": "a test result inside a milestone that a separate verifier re-ran and marked VERIFIED in PROGRESS",
       "measured-builder": "measured by a builder inside a milestone that was later VERIFIED, but this exact number was not re-run by the verifier; used only as a stated limit",
