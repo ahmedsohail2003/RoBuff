@@ -58,8 +58,8 @@ export function pickPhases(plan: PickPlan): PickPhase[] {
   ];
 }
 
-/** Minimum-jerk blend 0..1: zero velocity and acceleration at both ends. */
-function minJerk(s: number): number {
+/** Minimum-jerk blend 0..1: zero velocity and acceleration at both ends. The one copy: the lift test and the voice source use it too. */
+export function minJerk(s: number): number {
   const u = Math.min(1, Math.max(0, s));
   return u * u * u * (10 - 15 * u + 6 * u * u);
 }

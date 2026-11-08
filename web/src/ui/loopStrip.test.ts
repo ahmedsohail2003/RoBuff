@@ -32,7 +32,7 @@ describe('loop strip stages', () => {
     const v = stageViews(base);
     expect(v.sense.text).toBe('camera 30 fps · tracking 17 ms · hand seen');
     expect(v.sense.active).toBe(true);
-    expect(v.understand.text).toBe('pinch open (0.41) · guardrail - · spec offline mock (no key)');
+    expect(v.understand.text).toBe('pinch open (0.41) · guardrail no request yet · spec offline mock (no key)');
     expect(v.understand.active).toBe(false);
     expect(v.act.text).toBe('arm still · jaw open · voice quiet');
     expect(v.act.active).toBe(false);
@@ -44,6 +44,12 @@ describe('loop strip stages', () => {
     expect(v.sense.active).toBe(false);
     expect(v.act.text.startsWith('arm holding (hand lost)')).toBe(true);
     expect(v.act.state).toBe('holding');
+  });
+
+  it('says voice grip, not pinch, while voice has the arm', () => {
+    const v = stageViews({ ...base, input: 'voice', handSeen: false, pinch: 'closed', pinchRatio: null, guardrail: 'PASS' });
+    expect(v.understand.text).toBe('voice grip closed · guardrail PASS · spec offline mock (no key)');
+    expect(stageViews({ ...base, pinch: null }).understand.text.startsWith('pinch none · ')).toBe(true);
   });
 
   it('lights Understand for a pinch change, a guardrail check or a live ghost error', () => {

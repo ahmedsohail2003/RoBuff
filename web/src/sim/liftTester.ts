@@ -7,6 +7,7 @@
 import { ArmController } from '../control/armController';
 import { closingYawFor } from '../control/grasp';
 import { ArmIk } from '../control/ik';
+import { minJerk } from '../input/pickScript';
 import type { LiftRequest, LiftResult, LiftTester } from '../objects/lift';
 import { FIXED_PAD_SITE, GRIPPER_SITE, MOVING_PAD_SITE } from './armXml';
 import type { Mujoco } from './mujocoRuntime';
@@ -46,11 +47,6 @@ export function liftPhases(grasp: Vec3, openGrip: number, liftHeight: number, ho
     { name: 'lift', waypoint: lifted, grip: 1, moveS: 1.5, dwellS: 0.6 },
     { name: 'hold', waypoint: lifted, grip: 1, moveS: 0, dwellS: holdS },
   ];
-}
-
-function minJerk(s: number): number {
-  const u = Math.min(1, Math.max(0, s));
-  return u * u * u * (10 - 15 * u + 6 * u * u);
 }
 
 /** Target and grip at time t along the phases, from a start point and grip. Null once the last phase ends. */

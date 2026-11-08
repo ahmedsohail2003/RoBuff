@@ -21,7 +21,7 @@ export interface HandState {
 }
 
 export interface InputSource {
-  readonly kind: 'webcam' | 'synthetic' | 'mouse';
+  readonly kind: 'webcam' | 'synthetic' | 'mouse' | 'voice';
   /** Latest hand state at simulated time tMs, or null if there is none to act on. */
   poll(tMs: number): HandState | null;
   /** Restart from the beginning, after the simulation resets. */

@@ -46,12 +46,12 @@ export interface PickReport {
   fallS: number | null;
 }
 
-/** Reduces the cube's contacts to what the pick check needs. */
-export function jawContactSummary(contacts: readonly ContactReport[]): { jawsTouching: string[]; jawMinDist: number } {
+/** Reduces a body's contacts (the cube unless named) to what the pick check needs. */
+export function jawContactSummary(contacts: readonly ContactReport[], bodyName = 'cube'): { jawsTouching: string[]; jawMinDist: number } {
   const touching = new Set<string>();
   let minDist = 0;
   for (const contact of contacts) {
-    const other = contact.body1 === 'cube' ? contact.body2 : contact.body1;
+    const other = contact.body1 === bodyName ? contact.body2 : contact.body1;
     if (!(JAW_BODIES as readonly string[]).includes(other)) continue;
     touching.add(other);
     minDist = Math.min(minDist, contact.dist);

@@ -354,7 +354,7 @@ function quatDot(a: readonly number[], b: readonly number[]): number {
   return a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]! + a[3]! * b[3]!;
 }
 
-/** Every vertex of the body's mesh geoms in world coordinates, from MuJoCo's own state. */
+/** Every vertex of the body's mesh geoms, and the 8 corners of its box geoms, in world coordinates, from MuJoCo's own state. */
 export function worldPointsOfBody(mujoco: Mujoco, sim: Simulation, bodyName: string): Float64Array {
   const model = sim.model;
   const data = sim.mjData;
@@ -365,9 +365,25 @@ export function worldPointsOfBody(mujoco: Mujoco, sim: Simulation, bodyName: str
   const xpos = data.geom_xpos as Float64Array;
   const xmat = data.geom_xmat as Float64Array;
   const vert = model.mesh_vert as Float32Array;
+  const size = model.geom_size as Float64Array;
   const out: number[] = [];
   for (let g = 0; g < model.ngeom; g++) {
-    if (geomBody[g] !== body || geomType[g] !== mujoco.mjtGeom.mjGEOM_MESH.value) continue;
+    if (geomBody[g] !== body) continue;
+    if (geomType[g] === mujoco.mjtGeom.mjGEOM_BOX.value) {
+      // A box (the arena's test cube) has no mesh: its corners are its points.
+      const p = [xpos[3 * g]!, xpos[3 * g + 1]!, xpos[3 * g + 2]!];
+      const m = Array.from(xmat.subarray(9 * g, 9 * g + 9));
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1])
+          for (const sz of [-1, 1]) {
+            const x = sx * size[3 * g]!;
+            const y = sy * size[3 * g + 1]!;
+            const z = sz * size[3 * g + 2]!;
+            out.push(p[0]! + m[0]! * x + m[1]! * y + m[2]! * z, p[1]! + m[3]! * x + m[4]! * y + m[5]! * z, p[2]! + m[6]! * x + m[7]! * y + m[8]! * z);
+          }
+      continue;
+    }
+    if (geomType[g] !== mujoco.mjtGeom.mjGEOM_MESH.value) continue;
     const mesh = geomMesh[g]!;
     const start = (model.mesh_vertadr as Int32Array)[mesh]!;
     const count = (model.mesh_vertnum as Int32Array)[mesh]!;

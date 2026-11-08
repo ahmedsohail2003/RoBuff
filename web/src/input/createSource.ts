@@ -4,7 +4,8 @@ import type { PickPlan } from './pickScript';
 import { SyntheticSource } from './syntheticSource';
 import { WebcamSource } from './webcamSource';
 
-export type InputKind = InputSource['kind'];
+/** The kinds a page can start with; voice only ever takes over from one of these. */
+export type InputKind = Exclude<InputSource['kind'], 'voice'>;
 
 /** ?input=webcam|synthetic|mouse. Anything else, or nothing, means mouse. */
 export function inputKindFromUrl(search: string): InputKind {

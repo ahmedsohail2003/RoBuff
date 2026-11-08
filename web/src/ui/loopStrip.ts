@@ -8,7 +8,7 @@ export type StageName = 'sense' | 'understand' | 'act';
 
 /** One snapshot of what the loop is doing, gathered by the console every 100 ms. */
 export interface LoopReading {
-  input: 'webcam' | 'synthetic' | 'mouse' | null;
+  input: 'webcam' | 'synthetic' | 'mouse' | 'voice' | null;
   /** Camera frames per second, measured from the video frames the tracker received. */
   cameraFps: number | null;
   /** Median hand-model inference time. */
@@ -67,6 +67,8 @@ function senseText(r: LoopReading): string {
       return 'synthetic hand (scripted test input) · 21 landmarks';
     case 'mouse':
       return r.handSeen ? 'mouse pointer (no camera)' : 'mouse: move over the scene';
+    case 'voice':
+      return 'voice has the arm (say hand control to give it back)';
     default:
       return 'direct commands (no hand input)';
   }
@@ -74,9 +76,11 @@ function senseText(r: LoopReading): string {
 
 function understandText(r: LoopReading): string {
   const parts: string[] = [];
-  if (r.pinch === null) parts.push('pinch -');
-  else parts.push(`pinch ${r.pinch}${r.pinchRatio === null ? '' : ` (${r.pinchRatio.toFixed(2)})`}`);
-  parts.push(r.guardrailBusy ? 'guardrail checking...' : `guardrail ${r.guardrail ?? '-'}`);
+  // Voice in the seat has no pinch: its grip is a commanded amount, so say so.
+  const grip = r.input === 'voice' ? 'voice grip' : 'pinch';
+  if (r.pinch === null) parts.push(`${grip} none`);
+  else parts.push(`${grip} ${r.pinch}${r.pinchRatio === null || r.input === 'voice' ? '' : ` (${r.pinchRatio.toFixed(2)})`}`);
+  parts.push(r.guardrailBusy ? 'guardrail checking...' : `guardrail ${r.guardrail ?? 'no request yet'}`);
   parts.push(`spec ${r.specSource}`);
   if (r.ghostOn) parts.push(r.ghostErrorMm === null ? 'ghost err waiting' : `ghost err ${r.ghostErrorMm.toFixed(1)} mm`);
   return parts.join(' · ');

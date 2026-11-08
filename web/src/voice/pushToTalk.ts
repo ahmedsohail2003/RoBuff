@@ -6,13 +6,20 @@
 // button does. While stopped, voice commands that would move the arm are refused.
 
 import type { App } from '../app';
+import { runDrop, runPick, runPlace, planPick, DROP_NO_CONTACT_S, type Holding, type MacroWorld } from '../control/armMacro';
+import { currentGrip } from '../control/grip';
+import { directionVector, directionWords, moveDuration, planMove, sayCm } from '../control/voiceMotion';
+import { DelayedSource, operatorSource, setOperatorSource } from '../delay/dualSim';
 import { sayGravityValue } from '../objects/format';
 import { objectBrain, type ObjectBrain } from '../objects/objectBrain';
 import { GRIPPER_SITE } from '../sim/armXml';
 import { gravity, setGravity, type GravityPreset } from '../sim/gravity';
-import type { Vec3 } from '../sim/simulation';
-import type { InputSource } from '../input/handState';
-import { HELP_LINE, parseCommand, type VoiceAction } from './grammar';
+import { jawAngleForGapScratch, jawContacts, liveObject, slotBodyName } from '../sim/liveObject';
+import type { Mujoco } from '../sim/mujocoRuntime';
+import { JAW_ACTUATOR, type Vec3 } from '../sim/simulation';
+import { trialBusy } from '../trials/runner';
+import { VoiceSource } from '../input/voiceSource';
+import { HELP_LINE, parseCommand, VOICE_PLACEHOLDER, type VoiceAction } from './grammar';
 import { LIVE_BADGE, UNSUPPORTED_NOTE, warmAudioOutput, type LiveListener, type LiveState } from './liveTalk';
 import { consoleVoice, type Caption, type ConsoleVoice } from './speak';
 
@@ -45,9 +52,33 @@ export interface CommandResult {
   /** performance.now() when the command was handled, and when the stop latch was set (stop only). */
   atMs: number;
   stoppedAtMs: number | null;
+  /** For a voice move: where it started and ended (world m), and whether the reach box shortened it. */
+  motion?: { from: Vec3; goal: Vec3; clamped: boolean; outcome: string } | null;
+}
+
+/** What is in the object slot, as the object panel registers it (lane S) or as the scene shows it. */
+export interface SlotOccupant {
+  name: string;
+  kind: string;
+  partNames: string[];
+  bodyName: string;
+  busy: boolean;
+  proven: boolean;
+}
+
+/** The skin and slot registry the object panel fills in. Until it does, voice says skins are not ready. */
+interface SkinRegistry {
+  currentObject?: () => SlotOccupant | null;
+  skinObject?: (text: string, part?: string | null) => Promise<string>;
+  clearSkin?: (part?: string | null) => Promise<string>;
 }
 
 const STOPPED_LINE = 'I am stopped. Voice cannot clear a stop: press Resume on screen.';
+export const MOON_PICK_LINE = 'In the Moon modes I take moves, grip and home; switch to Direct for a pick.';
+const TRIAL_LINE = 'A logged trial is running, so voice does not move the arm. It is yours after the trial.';
+const REACH_LINE = 'That is as far as I can reach.';
+/** Words that mean whatever is in the slot. */
+const ANY_OBJECT = /^(?:it|object|thing|cube|test cube|block|rock|box|one)$/;
 
 interface RecognitionLike {
   lang: string;
@@ -131,8 +162,13 @@ export class VoiceConsole {
   private readonly talk: HTMLButtonElement;
   private readonly handBack: HTMLButtonElement;
   private readonly home: Vec3 | null;
-  /** The hand (or mouse) source voice took the arm from, kept to give back. */
-  private parked: InputSource | null = null;
+  /** What voice picked up and still holds, or null. */
+  holding: Holding | null = null;
+  /** Live talk sets this: typed and held lines the grammar does not know go to the same chat brain. */
+  chatLine: ((text: string) => Promise<unknown>) | null = null;
+  private macroBusy = false;
+  private lastJawContactT: number | null = null;
+  private lastDropCheckT = -Infinity;
   private recognition: RecognitionLike | null = null;
   private listening = false;
 
@@ -141,6 +177,7 @@ export class VoiceConsole {
     private readonly app: App,
     private readonly brain: ObjectBrain = objectBrain,
     private readonly voice: ConsoleVoice = consoleVoice,
+    private readonly mujoco: Mujoco | null = null,
   ) {
     if (!document.getElementById('voice-panel-style')) document.head.appendChild(el('style', { id: 'voice-panel-style' }, STYLE));
     // Where the gripper is at the keyframe pose, before any input moves it.
@@ -184,7 +221,7 @@ export class VoiceConsole {
     this.root.append(row, this.liveNote);
 
     const form = el('form');
-    this.input = el('input', { type: 'text', placeholder: 'Or type: stop, Moon, give me a comet ice shard', 'aria-label': 'Type a command', 'data-testid': 'voice-text' });
+    this.input = el('input', { type: 'text', placeholder: VOICE_PLACEHOLDER, 'aria-label': 'Type a command', 'data-testid': 'voice-text' });
     // Keys typed here must not steer the arm (the mouse source listens for W, S and G).
     this.input.addEventListener('keydown', (event) => event.stopPropagation());
     form.append(this.input, el('button', { type: 'submit', 'data-testid': 'voice-send' }, 'Send'));
@@ -198,8 +235,8 @@ export class VoiceConsole {
 
     this.heard = el('div', { class: 'heard', 'data-testid': 'voice-heard' });
     this.caption = el('div', { class: 'caption', 'data-testid': 'caption', 'aria-live': 'polite' });
-    this.handBack = el('button', { type: 'button', class: 'hand-back', hidden: '' }, 'Give the arm back to the hand');
-    this.handBack.addEventListener('click', () => this.giveBack());
+    this.handBack = el('button', { type: 'button', class: 'hand-back', 'data-testid': 'hand-back', hidden: '' }, 'Give the arm back to the hand');
+    this.handBack.addEventListener('click', () => void this.giveBack());
     this.root.append(this.heard, this.caption, this.handBack);
     parent.appendChild(this.root);
 
@@ -273,6 +310,14 @@ export class VoiceConsole {
     this.heard.textContent = `Heard: "${text}"`;
     const result: CommandResult = { text, action, by: 'grammar', said: null, network: false, simTime: this.app.sim.time, stoppedAt: null, atMs: performance.now(), stoppedAtMs: null };
     this.results.push(result);
+    if (action.type === 'unknown' && this.brain.live && this.chatLine) {
+      // The same chat brain Talk live uses: it can move, grip, pick, place and skin, not just spawn.
+      result.network = true;
+      result.by = 'gemini';
+      await this.chatLine(text);
+      result.said = this.voice.captions[this.voice.captions.length - 1]?.text ?? null;
+      return result;
+    }
     if (action.type === 'unknown' && this.brain.live) {
       result.network = true;
       try {
@@ -303,17 +348,51 @@ export class VoiceConsole {
       }
       case 'resume':
         return this.say(stopped ? STOPPED_LINE : 'I am not stopped.', 'info', { fixed: true });
-      case 'home':
+      case 'home': {
         if (stopped) return this.say(STOPPED_LINE, 'refusal', { fixed: true });
+        if (trialBusy()) return this.say(TRIAL_LINE, 'refusal', { fixed: true });
         if (!this.home) return this.say('I do not know where home is in this scene.', 'info');
-        this.takeArm();
-        this.app.loop.controller.setTarget(this.home);
-        return this.say('Going home.', 'info', { fixed: true });
-      case 'grip':
+        const voice = this.takeVoice();
+        const from = voice.endGoal();
+        const said = this.say('Going home.', 'info', { fixed: true });
+        const outcome = await voice.moveTo(this.home, moveDuration(Math.hypot(this.home[0] - from[0], this.home[1] - from[1], this.home[2] - from[2])), 'going home');
+        result.motion = { from, goal: [...this.home] as Vec3, clamped: false, outcome };
+        return said;
+      }
+      case 'grip': {
         if (stopped) return this.say(STOPPED_LINE, 'refusal', { fixed: true });
-        this.takeArm();
-        this.app.loop.controller.setGrip(action.open ? 0 : 1);
-        return this.say(action.open ? 'Opening the jaw.' : 'Closing the jaw.', 'info', { fixed: true });
+        if (trialBusy()) return this.say(TRIAL_LINE, 'refusal', { fixed: true });
+        if (action.open && this.holding && !this.inMoon()) return this.runMacro('drop', result);
+        const voice = this.takeVoice();
+        const said = this.say(action.open ? 'Opening the jaw.' : 'Closing the jaw.', 'info', { fixed: true });
+        if (action.open) this.holding = null;
+        await voice.setGrip(action.open ? 0 : 1, action.open ? 'opening the jaw' : 'closing the jaw');
+        return said;
+      }
+      case 'move':
+        return this.move(action, result, stopped);
+      case 'pick':
+      case 'place':
+        return this.runMacro(action.type, result, action.type === 'pick' ? action.target : null);
+      case 'handBack':
+        return this.giveBack();
+      case 'skin':
+      case 'unskin': {
+        const registry = this.brain as ObjectBrain & SkinRegistry;
+        const paint = registry.skinObject;
+        const clear = registry.clearSkin;
+        if (action.type === 'skin' ? !paint : !clear) return this.say('Skins are not ready yet.', 'info', { fixed: true });
+        const occupant = this.occupant();
+        // "paint the tesla red" means the whole Tesla: only a real part name is a part.
+        const asked = action.part;
+        const part = asked && occupant && !occupant.partNames.some((p) => p.toLowerCase().includes(asked.replace(/s$/, ''))) && this.namesObject(asked, occupant) ? null : asked;
+        try {
+          const line = action.type === 'skin' ? await paint!(action.look, part) : await clear!(part);
+          return this.say(line, 'info');
+        } catch (error) {
+          return this.say(`The skin did not work: ${error instanceof Error ? error.message : String(error)}`, 'info');
+        }
+      }
       case 'gravity':
         // The gravity listener says the line, for the menu and for voice alike.
         setGravity(action.id);
@@ -353,20 +432,178 @@ export class VoiceConsole {
     this.voice.say(`Gravity set to ${preset.label}: ${value}, simulated.`, 'gravity', { fixed: true });
   }
 
-  /** Voice takes the arm from the hand so its command is not overwritten next tick. */
-  private takeArm(): void {
-    const source = this.app.loop.source;
-    if (!source) return;
-    this.parked = source;
-    this.app.loop.source = null;
-    this.handBack.hidden = false;
-    this.handBack.textContent = `Give the arm back to the ${source.kind === 'webcam' ? 'hand' : source.kind}`;
+  /** The voice source in the operator's seat, or null when the hand or mouse has the arm. */
+  voiceSource(): VoiceSource | null {
+    const seat = operatorSource(this.app.loop);
+    return seat instanceof VoiceSource && seat.state !== 'handed-back' ? seat : null;
   }
 
-  private giveBack(): void {
-    if (this.parked && !this.app.loop.source) this.app.loop.source = this.parked;
-    this.parked = null;
-    this.handBack.hidden = true;
+  /**
+   * Voice takes the operator's seat (inside the Moon delay wrapper when there is one), parking
+   * the hand or mouse source to give back later. So voice moves, grip and home are delayed and
+   * ghosted in the Moon modes exactly like the hand.
+   */
+  private takeVoice(): VoiceSource {
+    const existing = this.voiceSource();
+    if (existing) return existing;
+    const seat = operatorSource(this.app.loop);
+    const parked = seat instanceof VoiceSource ? seat.parked : seat;
+    const voice: VoiceSource = new VoiceSource(this.app.loop, {
+      parked,
+      onHandBack: (back) => {
+        if (operatorSource(this.app.loop) === voice) setOperatorSource(this.app.loop, back);
+        this.showHandBack();
+        this.say('The arm is yours again.', 'info', { fixed: true });
+      },
+      onTick: (t) => this.watchDrop(t),
+    });
+    setOperatorSource(this.app.loop, voice);
+    this.showHandBack();
+    return voice;
+  }
+
+  private showHandBack(): void {
+    const voice = this.voiceSource();
+    this.handBack.hidden = !voice;
+    if (voice) {
+      const kind = voice.parked?.kind;
+      this.handBack.textContent = `Give the arm back to the ${kind === 'webcam' ? 'hand' : (kind ?? 'hand')}`;
+    }
+  }
+
+  /** "hand control" and the button: glide to the hand's target, keep the grip until the hand agrees, then hand over. */
+  private giveBack(): string {
+    const voice = this.voiceSource();
+    if (!voice) {
+      this.showHandBack();
+      return this.say('The hand already has the arm.', 'info', { fixed: true });
+    }
+    if (!voice.parked) {
+      setOperatorSource(this.app.loop, null);
+      this.showHandBack();
+      return this.say('There was no hand or mouse to give it to, so the arm just holds.', 'info', { fixed: true });
+    }
+    voice.handBack(this.holding !== null);
+    return this.say(this.holding ? 'Handing the arm back. I keep the grip until your hand closes too.' : 'Handing the arm back. It glides to your hand.', 'info', { fixed: true });
+  }
+
+  private inMoon(): boolean {
+    return this.app.loop.source instanceof DelayedSource;
+  }
+
+  /** What is in the slot: the panel's registry when it has one, else the body in the scene. */
+  occupant(): SlotOccupant | null {
+    const registry = this.brain as ObjectBrain & SkinRegistry;
+    const current = registry.currentObject?.();
+    if (current) return current;
+    if (!this.mujoco) return null;
+    const body = slotBodyName(this.mujoco, this.app.sim);
+    if (!body) return null;
+    const kind = body === 'cube' ? 'cube' : body.replace(/^slot_/, '');
+    return { name: body === 'cube' ? 'test cube' : kind.replace(/_/g, ' '), kind, partNames: [], bodyName: body, busy: false, proven: true };
+  }
+
+  private namesObject(target: string, occupant: SlotOccupant): boolean {
+    const t = target.toLowerCase().replace(/^(?:the|a|an)\s+/, '').trim();
+    if (ANY_OBJECT.test(t) && (occupant.bodyName === 'cube' || t === 'it' || t === 'object' || t === 'thing' || t === 'one')) return true;
+    const name = `${occupant.name} ${occupant.kind}`.toLowerCase().replace(/_/g, ' ');
+    return t.split(' ').every((word) => name.includes(word.replace(/s$/, '')));
+  }
+
+  private async move(action: Extract<VoiceAction, { type: 'move' }>, result: CommandResult, stopped: boolean): Promise<string> {
+    if (stopped) return this.say(STOPPED_LINE, 'refusal', { fixed: true });
+    if (trialBusy()) return this.say(TRIAL_LINE, 'refusal', { fixed: true });
+    if (action.cm > 30) return this.say('That is more than 30 centimetres. I move at most 30 at a time.', 'refusal', { fixed: true });
+    if (action.cm < 0.5) return this.say('That is under half a centimetre, too small to move.', 'refusal', { fixed: true });
+    const voice = this.takeVoice();
+    const from = voice.endGoal();
+    const unit = directionVector(action.direction, this.app.viewport.azimuth, from);
+    const metres = action.cm / 100;
+    const plan = planMove(from, [unit[0] * metres, unit[1] * metres, unit[2] * metres]);
+    result.motion = { from, goal: plan.goal, clamped: plan.clamped, outcome: 'refused' };
+    if (plan.distance < 0.002) return this.say(REACH_LINE, 'info', { fixed: true });
+    const said = this.say(`Moving ${directionWords(action.direction)} ${sayCm(action.cm)}.`, 'info', { fixed: true });
+    const outcome = await voice.moveTo(plan.goal, plan.durationS, `moving ${directionWords(action.direction)} ${sayCm(action.cm)}`);
+    voice.clamped = plan.clamped;
+    result.motion.outcome = outcome;
+    if (outcome === 'done' && plan.clamped) return this.say(`${REACH_LINE} I moved ${sayCm(plan.distance * 100)}.`, 'info', { fixed: true });
+    return said;
+  }
+
+  /** Pick, place and drop: the lift test's grasp on the live object, checked with MuJoCo's contacts. */
+  private async runMacro(kind: 'pick' | 'place' | 'drop', result: CommandResult, target: string | null = null): Promise<string> {
+    if (this.app.loop.stopLatch?.stopped) return this.say(STOPPED_LINE, 'refusal', { fixed: true });
+    if (trialBusy()) return this.say(TRIAL_LINE, 'refusal', { fixed: true });
+    if (this.inMoon()) return this.say(MOON_PICK_LINE, 'refusal', { fixed: true });
+    if (this.macroBusy) return this.say('I am still busy with the last one.', 'refusal', { fixed: true });
+    const occupant = this.occupant();
+    const mujoco = this.mujoco;
+    if (!occupant || !mujoco) return this.say('There is nothing to pick up here.', 'refusal', { fixed: true });
+    if (occupant.busy) return this.say('Wait: the object is still being checked.', 'refusal', { fixed: true });
+    if (kind !== 'pick' && !this.holding) return this.say('I am not holding anything.', 'refusal', { fixed: true });
+    if (kind === 'pick') {
+      if (this.holding) return this.say('I am already holding it. Say put it down or drop it.', 'refusal', { fixed: true });
+      if (target && !this.namesObject(target, occupant)) {
+        return this.say(`The slot has the ${occupant.name}, not a ${target}. Say pick it up for the ${occupant.name}, or ask me to make a ${target}.`, 'refusal');
+      }
+    }
+    const body = occupant.bodyName;
+    const voice = this.takeVoice();
+    const world: MacroWorld = {
+      run: (steps, label) => voice.runSteps(steps, label),
+      read: () => liveObject(mujoco, this.app.sim, body),
+      jaws: () => jawContacts(this.app.sim, body),
+      grip: () => this.app.loop.controller.status().grip ?? currentGrip(this.app.sim, JAW_ACTUATOR),
+      site: () => voice.endGoal(),
+    };
+    this.macroBusy = true;
+    try {
+      if (kind === 'pick') {
+        const sim = this.app.sim;
+        const [closed, open] = sim.jawRange();
+        const plan = planPick(world.read(), { range: [closed, open], angleForGap: (gap) => jawAngleForGapScratch(mujoco, sim, gap) }, voice.endGoal());
+        if (!plan.ok) return this.say(plan.refuse, 'refusal');
+        this.say(occupant.bodyName === 'cube' ? 'Picking it up.' : `Picking up the ${occupant.name}.`, 'info', { fixed: true });
+        const done = await runPick(world, plan);
+        if (done.ok) {
+          this.holding = done.holding;
+          this.lastJawContactT = this.app.sim.time;
+        }
+        return this.say(done.line, done.ok ? 'info' : 'refusal');
+      }
+      const holding = this.holding!;
+      this.say(kind === 'place' ? 'Putting it down.' : 'Dropping it.', 'info', { fixed: true });
+      const done = kind === 'place' ? await runPlace(world, holding) : await runDrop(world);
+      if (done.ok || !('cancelled' in done && done.cancelled)) this.holding = done.ok ? null : this.holding;
+      return this.say(done.line, done.ok ? 'info' : 'refusal');
+    } catch (error) {
+      return this.say(`The ${kind} stopped: ${error instanceof Error ? error.message : String(error)}`, 'refusal');
+    } finally {
+      this.macroBusy = false;
+      result.motion ??= { from: voice.goal, goal: voice.goal, clamped: false, outcome: kind };
+    }
+  }
+
+  /** While voice holds something: no jaw contact for 0.1 s of simulated time means it slipped out. */
+  private watchDrop(t: number): void {
+    if (!this.holding || this.macroBusy || !this.mujoco || t - this.lastDropCheckT < 0.05) return;
+    this.lastDropCheckT = t;
+    let jaws: string[];
+    try {
+      jaws = jawContacts(this.app.sim, this.holding.body);
+    } catch {
+      this.holding = null;
+      return;
+    }
+    if (jaws.length > 0 || this.lastJawContactT === null) {
+      this.lastJawContactT = t;
+      return;
+    }
+    if (t - this.lastJawContactT >= DROP_NO_CONTACT_S) {
+      this.holding = null;
+      this.lastJawContactT = null;
+      this.say('I dropped it. Nothing is in the jaw now.', 'info', { fixed: true });
+    }
   }
 
   private startListening(): void {
@@ -443,6 +680,8 @@ export interface VoiceHook {
   voiceBadges(): { brain: string; voice: string; mic: string; live: string };
   /** Logged Gemini calls (live gate). */
   brainCalls(): ObjectBrain['calls'];
+  /** The object in the slot as physics has it now, and whether voice holds it. */
+  voiceObject(): { body: string; com: Vec3; lowest: number; jaws: string[]; holding: boolean } | null;
 }
 
 declare module '../test-hooks' {
@@ -450,10 +689,10 @@ declare module '../test-hooks' {
 }
 
 /** The one init call for M5: the voice console, the health check, and (dev and test builds) the hooks. */
-export function mountVoice(app: App, withHooks: boolean): VoiceConsole {
+export function mountVoice(app: App, withHooks: boolean, mujoco: Mujoco | null = null): VoiceConsole {
   const params = new URLSearchParams(location.search);
   consoleVoice.muted = params.get('mute') === '1';
-  const panel = new VoiceConsole(document.body, app);
+  const panel = new VoiceConsole(document.body, app, objectBrain, consoleVoice, mujoco);
   void objectBrain.refresh();
   if (withHooks && window.__sim) {
     const hooks: VoiceHook = {
@@ -467,6 +706,16 @@ export function mountVoice(app: App, withHooks: boolean): VoiceConsole {
         live: document.querySelector('[data-testid="live-badge"]')?.textContent ?? '',
       }),
       brainCalls: () => objectBrain.calls.map((c) => ({ ...c })),
+      voiceObject: () => {
+        const occupant = panel.occupant();
+        if (!occupant || !mujoco) return null;
+        try {
+          const obj = liveObject(mujoco, app.sim, occupant.bodyName);
+          return { body: obj.body, com: obj.com, lowest: obj.lowest, jaws: jawContacts(app.sim, occupant.bodyName), holding: panel.holding !== null };
+        } catch {
+          return null;
+        }
+      },
     };
     Object.defineProperties(window.__sim, Object.getOwnPropertyDescriptors(hooks));
   }

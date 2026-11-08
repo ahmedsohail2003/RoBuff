@@ -10,7 +10,7 @@ import type { TrackerState, WebcamSource } from '../input/webcamSource';
 import { showNotice } from '../render/notice';
 import { isStopKey, StopLatch } from '../safety/latch';
 
-export type InputKind = InputSource['kind'];
+export type InputKind = Exclude<InputSource['kind'], 'voice'>;
 
 /** Below this confidence the control loop ignores the hand (same as handMapping's MIN_CONFIDENCE). */
 const TRACKING_CONFIDENCE = 0.5;
@@ -32,7 +32,7 @@ export async function chooseInputKind(search: string, devices?: () => Promise<Pi
 }
 
 /** The on-screen line about the hand, or null when there is nothing to say. */
-export function handBanner(kind: InputKind | null, webcamState: string | null, hand: HandState | null): string | null {
+export function handBanner(kind: InputSource['kind'] | null, webcamState: string | null, hand: HandState | null): string | null {
   if (kind !== 'webcam' || webcamState !== 'running') return null;
   if (!hand) return 'show one hand to the camera';
   if (hand.confidence < TRACKING_CONFIDENCE) return 'hand lost, arm holding';
@@ -79,6 +79,7 @@ function describeInput(app: App): string {
   const source = app.loop.source;
   if (!source) return 'input: direct commands';
   const info = source.describe();
+  if (source.kind === 'voice') return `input: voice (${String(info.state)}; say "hand control" or press Give the arm back)`;
   if (source.kind === 'synthetic') return `input: synthetic hand, ${String(info.phase ?? 'starting')}`;
   if (source.kind === 'webcam') return `input: webcam, ${String(info.state)}`;
   if (info.note) return `input: ${String(info.note)}`;

@@ -35,6 +35,14 @@ export interface RunnerOptions {
   persist?: boolean;
 }
 
+/** The runner the page made, so voice can refuse to move the arm during a logged trial. */
+let activeRunner: TrialRunner | null = null;
+
+/** True while a logged trial counts down or runs: voice motion would contaminate its row. */
+export function trialBusy(): boolean {
+  return activeRunner?.state === 'countdown' || activeRunner?.state === 'running';
+}
+
 export class TrialRunner {
   state: RunnerState = 'idle';
   settings: SessionSettings;
@@ -54,6 +62,7 @@ export class TrialRunner {
     private readonly rig: DelayRig,
     private readonly options: RunnerOptions,
   ) {
+    activeRunner = this;
     const stored = options.persist ? this.load() : null;
     if (stored) {
       this.settings = stored.settings;

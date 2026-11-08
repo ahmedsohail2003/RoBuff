@@ -14,6 +14,7 @@ import { objectBrain } from '../objects/objectBrain';
 import { consoleVoice } from '../voice/speak';
 import { handBanner } from './states';
 import { LoopStrip, type LoopReading, type StageName, type StageView } from './loopStrip';
+import { handSeat } from '../input/voiceSource';
 
 /** Starfield drift about the vertical, radians per wall second. 0 under reduced motion. */
 export const STAR_DRIFT_RAD_S = 0.01;
@@ -85,7 +86,7 @@ function hintSeen(): boolean {
 function makeCameraToggle(app: App): HTMLButtonElement {
   const button = el('button', { type: 'button', id: 'camera-toggle', 'data-testid': 'camera-toggle' });
   const refresh = (): void => {
-    const on = app.loop.source?.kind === 'webcam';
+    const on = handSeat(app.loop)?.kind === 'webcam';
     const label = on ? 'Camera on · use mouse' : 'Turn on camera';
     if (button.textContent !== label) button.textContent = label;
     button.setAttribute('aria-pressed', String(on));
@@ -200,7 +201,7 @@ export function mountConsole(app: App, rig: DelayRig | null, withHooks: boolean)
   window.addEventListener('keydown', (event) => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
     const key = event.key.toLowerCase();
-    if (key === 'g' && app.loop.source?.kind !== 'mouse') {
+    if (key === 'g' && handSeat(app.loop)?.kind !== 'mouse') {
       const index = GRAVITY_PRESETS.findIndex((p) => p.id === gravity.current.id);
       gravity.set(GRAVITY_PRESETS[(index + 1) % GRAVITY_PRESETS.length]!.id);
     } else if (key === 'm') {

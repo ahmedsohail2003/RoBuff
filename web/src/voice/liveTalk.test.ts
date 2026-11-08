@@ -509,3 +509,136 @@ describe("LiveChat: a weight refusal's own suggestion", () => {
     expect(stopped.calls.said).toEqual([]);
   });
 });
+
+// ---- Chat actions: an ordered list run through the same handlers as the grammar ----
+
+function actRig(answer: unknown, options: { refuse?: (a: VoiceAction) => boolean; stopped?: () => boolean } = {}) {
+  const acted: VoiceAction[] = [];
+  const said: string[] = [];
+  const caption = (text: string): Caption => ({ id: said.length, text, kind: 'info', via: null, atMs: 0, firstAudioMs: null, error: null });
+  const router: LiveRouter = {
+    grammar: async (_text, action) => {
+      acted.push(action);
+      return { said: `grammar did ${action.type}` };
+    },
+    spawn: async (description) => {
+      acted.push({ type: 'object', text: description });
+      return { said: 'spawned' };
+    },
+    gravity: async () => undefined,
+    mode: () => undefined,
+    home: async () => undefined,
+    act: async (_heard, action) => {
+      acted.push(action);
+      const line = `did ${action.type}`;
+      said.push(line);
+      return { said: line, refused: options.refuse?.(action) ?? false, caption: caption(line) };
+    },
+    say: (reply) => {
+      said.push(reply);
+      return caption(reply);
+    },
+    state: () => ({ ...STATE, stopped: options.stopped?.() ?? false }),
+    chatLive: () => true,
+  };
+  const fetchImpl = async () => new Response(JSON.stringify(typeof answer === 'function' ? (answer as () => unknown)() : answer), { status: 200 });
+  return { acted, said, chat: new LiveChat(router, fetchImpl) };
+}
+
+describe('LiveChat: chat action lists', () => {
+  it('runs pick then a move up, in order, through the shared handler, and speaks one line', async () => {
+    const { acted, said, chat } = actRig({ reply: 'Grabbing it and lifting it a little, in simulation.', actions: [{ type: 'pick', value: 'the cube' }, { type: 'move', value: 'up 2 cm' }] });
+    const turn = await chat.handle('could you grab the cube and lift it a little higher');
+    expect(acted).toEqual([{ type: 'pick', target: 'cube' }, { type: 'move', direction: 'up', cm: 2, amount: 'said' }]);
+    expect(turn.ran).toEqual(['pick', 'move']);
+    expect(said).toEqual(['did pick', 'did move']);
+    expect(turn.caption?.text).toBe('did pick');
+    expect(turn.reply).toBe('Grabbing it and lifting it a little, in simulation.');
+  });
+
+  it('stops at a refusal, and at a set stop latch', async () => {
+    const refused = actRig({ reply: 'ok', actions: [{ type: 'pick' }, { type: 'move', value: 'up 2 cm' }] }, { refuse: (a) => a.type === 'pick' });
+    await refused.chat.handle('grab it and lift');
+    expect(refused.acted.map((a) => a.type)).toEqual(['pick']);
+    let stopped = false;
+    const latched = actRig({ reply: 'ok', actions: [{ type: 'move', value: 'left 5 cm' }, { type: 'move', value: 'up 5 cm' }, { type: 'gravity', value: 'mars' }] }, { refuse: () => ((stopped = true), false), stopped: () => stopped });
+    const turn = await latched.chat.handle('left then up');
+    expect(latched.acted.map((a) => a.type)).toEqual(['move']);
+    expect(turn.ran).toEqual(['move']);
+  });
+
+  it('maps every new action type and checks the answer again in the browser', () => {
+    const answer = parseChatAnswer({
+      reply: 'ok',
+      actions: [{ type: 'move', value: 'sideways 5 cm' }, { type: 'grip', value: 'close' }, { type: 'skin', value: 'gold', part: 'wheels' }, { type: 'unskin' }, { type: 'release' }],
+    });
+    expect(answer.actions).toEqual([{ type: 'grip', value: 'close' }, { type: 'skin', value: 'gold', part: 'wheels' }, { type: 'unskin' }]);
+    expect(answer.action).toEqual({ type: 'grip', value: 'close' });
+    expect(parseChatAnswer({ reply: 'ok', actions: [{ type: 'stop' }] }).actions).toEqual([{ type: 'none' }]);
+    expect(parseChatAnswer({ reply: 'ok', action: { type: 'home' } }).actions).toEqual([{ type: 'home' }]);
+    expect(parseChatAnswer({ reply: 'ok', actions: [{ type: 'move', value: 'left 45 cm' }] }).actions).toEqual([{ type: 'move', value: 'left 45 cm' }]);
+  });
+
+  it('runs non-stop lines one at a time, and a stop at once while a line is still running', async () => {
+    let release: () => void = () => undefined;
+    const order: string[] = [];
+    const router: LiveRouter = {
+      grammar: async (_text, action) => {
+        order.push(`start ${action.type}`);
+        if (action.type === 'move') await new Promise<void>((resolve) => (release = resolve));
+        order.push(`end ${action.type}`);
+        return { said: null };
+      },
+      spawn: async () => ({ said: null }),
+      gravity: async () => undefined,
+      mode: () => undefined,
+      home: async () => undefined,
+      say: () => null,
+      state: () => STATE,
+      chatLive: () => false,
+    };
+    const chat = new LiveChat(router);
+    const first = chat.handle('move left 5 cm');
+    const second = chat.handle('close the gripper');
+    const stop = chat.handle('stop');
+    await Promise.resolve();
+    expect(order).toEqual(['start move', 'start stop', 'end stop']);
+    release();
+    await Promise.all([first, second, stop]);
+    expect(order).toEqual(['start move', 'start stop', 'end stop', 'end move', 'start grip', 'end grip']);
+  });
+
+  it('the ears reopen 400 ms after a short motion line, while the motion is still running', async () => {
+    const timers = new FakeTimers();
+    const speaking = new FakeSpeaking();
+    FakeRecognition.made = [];
+    FakeRecognition.failStart = false;
+    let motionDone = false;
+    const router: LiveRouter = {
+      grammar: async () => {
+        // "Moving left 5 centimetres." plays for about 1.1 s, then 0.94 s of silent motion.
+        speaking.set(true);
+        timers.set(() => speaking.set(false), 1100);
+        await new Promise<void>((resolve) => timers.set(() => ((motionDone = true), resolve()), 2500));
+        return { said: 'Moving left 5 centimetres.' };
+      },
+      spawn: async () => ({ said: null }),
+      gravity: async () => undefined,
+      mode: () => undefined,
+      home: async () => undefined,
+      say: () => null,
+      state: () => STATE,
+      chatLive: () => false,
+    };
+    const chat = new LiveChat(router);
+    const listener = new LiveListener({ Recognition: FakeRecognition, speaking, timers, onFinal: (text) => chat.handle(text) });
+    listener.start();
+    FakeRecognition.made.at(-1)!.say('move left five centimetres');
+    expect(listener.state).toBe('paused');
+    timers.advance(1500);
+    expect(motionDone).toBe(false);
+    expect(listener.state).toBe('listening');
+    timers.advance(1100);
+    expect(motionDone).toBe(true);
+  });
+});

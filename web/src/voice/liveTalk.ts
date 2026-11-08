@@ -3,14 +3,16 @@
 // and it stops listening while RoBuff speaks so it never hears its own voice.
 // Every final line goes through the offline grammar first, exactly as hold-to-talk does, so
 // "stop" acts at once with no network call. Only a line the grammar does not know goes to the
-// key server's POST /api/chat (Gemini 3.8 Flash), whose { reply, action } is run through the
-// same handlers the grammar uses (a spawn goes through the object panel: guardrail and lift test).
+// key server's POST /api/chat (Gemini 3.8 Flash), whose { reply, actions } (at most 3, in order)
+// run through the same handlers the grammar uses: moves, grip, pick, place and home go through the
+// voice source in the operator's seat; a spawn goes through the object panel (guardrail, lift test).
 
 import type { App } from '../app';
 import { say } from '../objects/format';
 import { MATERIALS } from '../objects/materials';
 import { objectBrain } from '../objects/objectBrain';
 import { gravity, isGravityId, type GravityId } from '../sim/gravity';
+import { GRIPPER_SITE } from '../sim/armXml';
 import { parseCommand, type VoiceAction } from './grammar';
 import type { VoiceConsole } from './pushToTalk';
 import { consoleVoice, type Caption, type SpeakingState } from './speak';
@@ -19,7 +21,12 @@ export const LIVE_BADGE = { live: 'Live talk: Gemini 3.8 Flash (live)', offline:
 export const REPLY_MAX_CHARS = 200;
 /** The chat route gets this many earlier turns (one line each, operator or RoBuff). */
 export const HISTORY_TURNS = 6;
-export const CHAT_ACTIONS = ['spawn', 'gravity', 'mode', 'home', 'none'] as const;
+/** The same list as the key server's (server/index.mjs); a server test checks they match. */
+export const CHAT_ACTIONS = ['move', 'grip', 'pick', 'place', 'release', 'home', 'gravity', 'mode', 'spawn', 'skin', 'unskin', 'none'] as const;
+export const CHAT_MOVE_DIRECTIONS = ['left', 'right', 'up', 'down', 'forward', 'back', 'toward me', 'away from me'] as const;
+export const CHAT_MAX_ACTIONS = 3;
+/** Chat actions that move the arm or the jaw: never run while the stop latch is set. */
+const ARM_ACTIONS: readonly string[] = ['move', 'grip', 'pick', 'place', 'release', 'home', 'spawn'];
 /** The delay panel's modes (src/delay/dualSim.ts DELAY_MODES), the values a mode action may carry. */
 export const MODE_VALUES = ['direct', 'moon_ghost_off', 'moon_ghost_on'] as const;
 export const UNSUPPORTED_NOTE = "Live talk needs the browser's speech recognition, which this browser does not have. Type the command instead.";
@@ -366,31 +373,93 @@ export interface ChatState {
   gravity: GravityId;
   lastObject: string | null;
   stopped: boolean;
+  /** What is in the object slot now (not just the last request). */
+  object?: { name: string; partNames: string[]; skin?: string } | null;
+  /** True while voice holds the object in the jaw. */
+  holding?: boolean;
+  /** The gripper site, world cm, so the model can quote real numbers. */
+  gripper_cm?: [number, number, number];
 }
 export interface ChatAction {
   type: ChatActionType;
   value?: string;
+  part?: string;
 }
 export interface ChatAnswer {
   reply: string;
+  /** The first action (older answers carry only this one). */
   action: ChatAction;
+  /** Every action, in order, at most CHAT_MAX_ACTIONS. */
+  actions: ChatAction[];
   /** Gemini's own time as the key server measured it. */
   serverMs: number | null;
 }
 
-/** Checks the key server's answer again in the browser: a bad action becomes none, the reply is cut to 200 characters. */
+/** One action checked again in the browser: anything it cannot run becomes none. */
+export function cleanChatAction(raw: unknown): ChatAction {
+  const a = (raw ?? {}) as { type?: unknown; value?: unknown; part?: unknown };
+  const type = CHAT_ACTIONS.find((t) => t === a.type) ?? 'none';
+  const value = typeof a.value === 'string' ? a.value.trim().slice(0, 200) : '';
+  const part = typeof a.part === 'string' && a.part.trim() ? a.part.trim().slice(0, 24) : null;
+  if (type === 'spawn' && value) return { type, value };
+  if (type === 'gravity' && isGravityId(value.toLowerCase())) return { type, value: value.toLowerCase() };
+  if (type === 'mode' && (MODE_VALUES as readonly string[]).includes(value)) return { type, value };
+  if (type === 'home' || type === 'place' || type === 'release') return { type };
+  if (type === 'move' && chatToVoice({ type, value })) return { type, value };
+  if (type === 'grip' && (value === 'open' || value === 'close')) return { type, value };
+  if (type === 'pick') return value ? { type, value: value.slice(0, 60) } : { type };
+  if (type === 'skin' && value) return part ? { type, value: value.slice(0, 120), part } : { type, value: value.slice(0, 120) };
+  if (type === 'unskin') return part ? { type, part } : { type };
+  return { type: 'none' };
+}
+
+/** Checks the key server's answer again in the browser: bad actions are dropped, at most 3 are kept, the reply is cut to 200 characters. */
 export function parseChatAnswer(body: unknown): ChatAnswer {
-  const b = (body ?? {}) as { reply?: unknown; action?: { type?: unknown; value?: unknown }; latency_ms?: unknown };
+  const b = (body ?? {}) as { reply?: unknown; action?: unknown; actions?: unknown; latency_ms?: unknown };
   const reply = typeof b.reply === 'string' ? b.reply.replace(/\s+/g, ' ').trim().slice(0, REPLY_MAX_CHARS) : '';
   if (!reply) throw new Error('the chat answer had no reply');
-  const type = CHAT_ACTIONS.find((t) => t === b.action?.type) ?? 'none';
-  const value = typeof b.action?.value === 'string' ? b.action.value.trim().slice(0, 200) : '';
-  let action: ChatAction = { type: 'none' };
-  if (type === 'spawn' && value) action = { type, value };
-  else if (type === 'gravity' && isGravityId(value.toLowerCase())) action = { type, value: value.toLowerCase() };
-  else if (type === 'mode' && (MODE_VALUES as readonly string[]).includes(value)) action = { type, value };
-  else if (type === 'home') action = { type };
-  return { reply, action, serverMs: typeof b.latency_ms === 'number' ? b.latency_ms : null };
+  const raw: unknown[] = Array.isArray(b.actions) ? b.actions : b.action ? [b.action] : [];
+  const kept = raw
+    .slice(0, 6)
+    .map(cleanChatAction)
+    .filter((a) => a.type !== 'none')
+    .slice(0, CHAT_MAX_ACTIONS);
+  const actions: ChatAction[] = kept.length ? kept : [{ type: 'none' }];
+  return { reply, action: actions[0]!, actions, serverMs: typeof b.latency_ms === 'number' ? b.latency_ms : null };
+}
+
+/** The grammar action a chat action means, or null for mode and none (mode clicks the delay panel). */
+export function chatToVoice(action: ChatAction): VoiceAction | null {
+  switch (action.type) {
+    case 'move': {
+      // The browser re-parses the phrase, so its own limits and directions always apply.
+      const parsed = parseCommand(`move ${action.value ?? ''}`);
+      return parsed.type === 'move' ? parsed : null;
+    }
+    case 'grip':
+      return { type: 'grip', open: action.value === 'open' };
+    case 'release':
+      return { type: 'grip', open: true };
+    case 'pick': {
+      const target = (action.value ?? '').toLowerCase().replace(/^(?:the|a|an|that|this)\s+/, '').trim();
+      return { type: 'pick', target: !target || /^(?:it|that|this|object|thing)$/.test(target) ? null : target };
+    }
+    case 'place':
+      return { type: 'place' };
+    case 'home':
+      return { type: 'home' };
+    case 'gravity':
+      return isGravityId(action.value ?? '') ? { type: 'gravity', id: action.value as GravityId } : null;
+    case 'spawn':
+      return action.value ? { type: 'object', text: action.value } : null;
+    case 'skin':
+      return action.value ? { type: 'skin', look: action.value, part: action.part ?? null } : null;
+    case 'unskin':
+      return { type: 'unskin', part: action.part ?? null };
+    case 'mode':
+    case 'none':
+      return null;
+  }
 }
 
 /** What live talk can do: the same handlers the grammar's actions go through. */
@@ -402,6 +471,11 @@ export interface LiveRouter {
   gravity(id: GravityId, heard: string): Promise<unknown>;
   mode(value: ModeValue): unknown;
   home(heard: string): Promise<unknown>;
+  /**
+   * Runs one chat action (as its grammar action) through the voice console's handlers. refused is
+   * true when the handler refused it (stopped, out of reach, nothing held...): later actions are skipped.
+   */
+  act?(heard: string, action: VoiceAction): Promise<{ said: string | null; refused: boolean; caption: Caption | null }>;
   /** Speaks a reply (ElevenLabs when live, else the browser voice) and captions it. */
   say(reply: string): Caption | null;
   state(): ChatState;
@@ -415,6 +489,10 @@ export interface LiveTurn {
   by: 'grammar' | 'chat' | 'chat-failed';
   grammar: VoiceAction['type'];
   action: ChatAction | null;
+  /** Every chat action, in order (null for grammar turns). */
+  actions: ChatAction[] | null;
+  /** The chat actions that ran before a refusal or a stop. */
+  ran: ChatAction['type'][];
   reply: string | null;
   /** Browser round trip of POST /api/chat, ms. */
   chatMs: number | null;
@@ -435,6 +513,8 @@ export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 export class LiveChat {
   readonly history: ChatTurn[] = [];
   readonly turns: LiveTurn[] = [];
+  /** The line being handled now, if any: lines other than stop wait their turn behind it. */
+  private tail: Promise<unknown> | null = null;
 
   constructor(
     private readonly router: LiveRouter,
@@ -442,9 +522,36 @@ export class LiveChat {
     private readonly timeoutMs = 12_000,
   ) {}
 
-  async handle(text: string): Promise<LiveTurn> {
+  /**
+   * One heard line. A stop always runs at once, even while an earlier line is still running.
+   * Every other line runs one at a time, so a quick grammar line never overtakes a chat line.
+   */
+  handle(text: string): Promise<LiveTurn> {
     const parsed = parseCommand(text);
-    const turn: LiveTurn = { text, by: 'grammar', grammar: parsed.type, action: null, reply: null, chatMs: null, serverMs: null, error: null, atMs: performance.now(), caption: null, spawnDone: null, followUp: null };
+    const atMs = performance.now();
+    if (parsed.type === 'stop' || !this.tail) {
+      const run = this.handleNow(text, parsed, atMs);
+      if (parsed.type !== 'stop') this.track(run);
+      return run;
+    }
+    const run = this.tail.then(() => this.handleNow(text, parsed, atMs));
+    this.track(run);
+    return run;
+  }
+
+  private track(run: Promise<LiveTurn>): void {
+    const settled: Promise<unknown> = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.tail = settled;
+    void settled.then(() => {
+      if (this.tail === settled) this.tail = null;
+    });
+  }
+
+  private async handleNow(text: string, parsed: VoiceAction, atMs: number): Promise<LiveTurn> {
+    const turn: LiveTurn = { text, by: 'grammar', grammar: parsed.type, action: null, actions: null, ran: [], reply: null, chatMs: null, serverMs: null, error: null, atMs, caption: null, spawnDone: null, followUp: null };
     this.turns.push(turn);
     if (parsed.type !== 'unknown' || !this.router.chatLive()) {
       // The grammar's own path, exactly as hold-to-talk: "stop" sets the latch before anything else.
@@ -477,35 +584,51 @@ export class LiveChat {
     }
     turn.by = 'chat';
     turn.action = answer.action;
+    turn.actions = answer.actions;
     turn.reply = answer.reply;
     turn.serverMs = answer.serverMs;
-    await this.dispatch(answer.action, text, turn);
-    turn.caption = this.router.say(answer.reply);
+    const spoke = await this.dispatch(answer.actions, text, turn);
+    // One line per turn: when an arm action said its own short line, Gemini's reply is not spoken too.
+    turn.caption = spoke ?? this.router.say(answer.reply);
     this.remember(text, answer.reply);
     return turn;
   }
 
-  private async dispatch(action: ChatAction, heard: string, turn: LiveTurn): Promise<void> {
-    switch (action.type) {
-      case 'spawn':
-        // Not awaited: the lift test takes seconds, and the object panel speaks the receipt when it is done.
-        turn.spawnDone = this.router
-          .spawn(action.value!, heard)
-          .then((done) => this.followUp(done.said, action.value!, heard, turn))
-          .catch(() => undefined);
-        return;
-      case 'gravity':
-        await this.router.gravity(action.value as GravityId, heard);
-        return;
-      case 'mode':
+  /** Runs the actions in order. Stops at a refusal or a set stop latch. Returns the first line an arm action spoke, if any. */
+  private async dispatch(actions: ChatAction[], heard: string, turn: LiveTurn): Promise<Caption | null> {
+    let spoke: Caption | null = null;
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i]!;
+      if (action.type === 'none') continue;
+      if (this.router.state().stopped && ARM_ACTIONS.includes(action.type)) break;
+      turn.ran.push(action.type);
+      if (action.type === 'mode') {
         this.router.mode(action.value as ModeValue);
-        return;
-      case 'home':
-        await this.router.home(heard);
-        return;
-      case 'none':
-        return;
+        continue;
+      }
+      if (action.type === 'spawn') {
+        // Not awaited when it is last: the lift test takes seconds, and the object panel speaks the receipt.
+        const done = this.router
+          .spawn(action.value!, heard)
+          .then((d) => this.followUp(d.said, action.value!, heard, turn))
+          .catch(() => undefined);
+        turn.spawnDone = done;
+        if (i < actions.length - 1) await done;
+        continue;
+      }
+      if (!this.router.act) {
+        // A router without the shared handler (older pages, tests): gravity and home only.
+        if (action.type === 'gravity') await this.router.gravity(action.value as GravityId, heard);
+        else if (action.type === 'home') await this.router.home(heard);
+        continue;
+      }
+      const voice = chatToVoice(action);
+      if (!voice) continue;
+      const done = await this.router.act(heard, voice);
+      if (ARM_ACTIONS.includes(action.type) || action.type === 'skin' || action.type === 'unskin') spoke ??= done.caption;
+      if (done.refused) break;
     }
+    return spoke;
   }
 
   /**
@@ -536,6 +659,8 @@ export interface LiveTurnSummary {
   by: LiveTurn['by'];
   grammar: string;
   action: ChatAction | null;
+  actions: ChatAction[] | null;
+  ran: string[];
   reply: string | null;
   chatMs: number | null;
   serverMs: number | null;
@@ -552,6 +677,8 @@ function summary(turn: LiveTurn): LiveTurnSummary {
     by: turn.by,
     grammar: turn.grammar,
     action: turn.action,
+    actions: turn.actions,
+    ran: [...turn.ran],
     reply: turn.reply,
     chatMs: turn.chatMs,
     serverMs: turn.serverMs,
@@ -587,6 +714,12 @@ export function mountLiveTalk(panel: VoiceConsole, app: App, withHooks: boolean)
     spawn: (description, heard) => panel.runParsed(heard, { type: 'object', text: description }, 'gemini', true),
     gravity: (id, heard) => panel.runParsed(heard, { type: 'gravity', id }, 'gemini', true),
     home: (heard) => panel.runParsed(heard, { type: 'home' }, 'gemini', true),
+    act: async (heard, action) => {
+      const before = consoleVoice.captions.length;
+      const result = await panel.runParsed(heard, action, 'gemini', true);
+      const lines = consoleVoice.captions.slice(before);
+      return { said: result.said, refused: lines.some((c) => c.kind === 'refusal'), caption: lines[0] ?? null };
+    },
     mode: (value) => {
       // The same buttons the M key presses; they reset the scene and set Moon gravity for the delay modes.
       const button = document.querySelector<HTMLButtonElement>(`#delay-panel [data-delay-mode="${value}"]`);
@@ -595,10 +728,24 @@ export function mountLiveTalk(panel: VoiceConsole, app: App, withHooks: boolean)
       return true;
     },
     say: (reply) => consoleVoice.say(reply, 'info'),
-    state: () => ({ mode: pressedMode(), gravity: gravity.current.id, lastObject: panel.lastObject, stopped: app.loop.stopLatch?.stopped === true }),
+    state: () => {
+      const occupant = panel.occupant();
+      const site = app.sim.getSitePos(GRIPPER_SITE);
+      return {
+        mode: pressedMode(),
+        gravity: gravity.current.id,
+        lastObject: panel.lastObject,
+        stopped: app.loop.stopLatch?.stopped === true,
+        object: occupant ? { name: occupant.name, partNames: occupant.partNames } : null,
+        holding: panel.holding !== null,
+        ...(site ? { gripper_cm: site.map((v) => Math.round(v * 1000) / 10) as [number, number, number] } : {}),
+      };
+    },
     chatLive: () => objectBrain.live,
   };
   const chat = new LiveChat(router);
+  // Typed and held lines the grammar does not know go to the same chat brain while it is live.
+  panel.chatLine = (text) => chat.handle(text);
   const listener = new LiveListener({
     Recognition: findRecognition(),
     speaking: consoleVoice,

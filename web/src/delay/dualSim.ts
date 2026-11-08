@@ -160,6 +160,26 @@ export class DelayedSource implements InputSource {
   }
 }
 
+/**
+ * The operator's own source: the inner one when a Moon mode wraps it in a DelayedSource. Voice
+ * parks and restores through these two, so the delay wrapper itself is never parked and its
+ * line keeps one continuous history (a parked wrapper replays stale states and, after a mode
+ * switch, pushes an earlier time into its line).
+ */
+export function operatorSource(loop: { source: InputSource | null }): InputSource | null {
+  return loop.source instanceof DelayedSource ? loop.source.inner : loop.source;
+}
+
+/** Puts a source in the operator's seat: inside the delay wrapper when there is one. */
+export function setOperatorSource(loop: { source: InputSource | null }, source: InputSource | null): void {
+  if (loop.source instanceof DelayedSource) {
+    if (source) loop.source.inner = source;
+    else loop.source = null;
+  } else {
+    loop.source = source;
+  }
+}
+
 /** The ghost's input: the live hand state at the same tick, with no delay. */
 class GhostTap implements InputSource {
   constructor(private readonly delayed: () => DelayedSource | null) {}
