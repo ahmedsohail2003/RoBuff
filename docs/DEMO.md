@@ -45,7 +45,7 @@ If time allows, hand the judge the hand: "try a pick".
 | Tracking over 50 ms | Use `?hands=1`. |
 | The page crashes or hangs | Reload (the model files are local). |
 | No network, or the voice service is blocked | The offline grammar, the browser voice and captions keep working; type requests instead of speaking. |
-| Everything else fails | Play the backup video from the laptop. |
+| Everything else fails | Play the demo video from the laptop. |
 
 ## Questions
 
