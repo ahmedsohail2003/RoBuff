@@ -3,7 +3,7 @@
     "about": "Every number that appears on the RoBuff project page, with what it measures and where it came from. Written by the site copywriter on 2026-11-07. Paths are relative to the repo root. PROGRESS = private/.autopilot/PROGRESS.md (only VERIFIED rows and verdict lines used for results). PROGRESS keeps growing, so it is cited by row label (step | owner | clock), verdict line (step VERIFIED clock) or section heading, never by line number. EVID = private/.autopilot/evidence/.",
     "status_values": {
       "verified": "a test result inside a milestone that a separate verifier re-ran and marked VERIFIED in PROGRESS",
-      "measured-builder": "measured by a builder inside a milestone that was later VERIFIED, but this exact number was not re-run by the verifier; used only as a stated limit",
+      "measured-builder": "measured by a builder or fixer inside a milestone that was later VERIFIED, but this exact number was not re-run by the verifier; the page shows it only as one run or a few runs (for example 'In one test' or 'In live runs'), never as a verified result",
       "sourced": "from a cited outside source (NASA, JPL, DLR, papers)",
       "computed": "calculated by a command run for this page (private/.autopilot/site/calc-facts.mjs; its output is in private/.autopilot/site/calc-facts.out.txt)",
       "design": "a design value or limit written in the app's code, with the code's own stated basis",
@@ -13,7 +13,8 @@
     "fixer_round_2": "2026-11-07: Gemini corrected from 'offline mode, no call made' to the live gate result (gemini_gate_valid_specs, gemini_gate_median_ms, gemini_model_version); the 7 object-grid requests stay as run on the offline mock (S5 VERIFIED 17:52 EST, before the key was supplied at about 19:30). After the copy trim these facts are no longer shown on the page and are kept only for the record: ik_error_min_mm, ik_error_max_mm, rotex_delay_s, study_size_people, pinch_confirm_frames, mujoco_version.",
     "fixer_round_3": "2026-11-07 final fix: every PROGRESS citation rewritten from line numbers to row labels; unit tests 182 -> 201 (M4f VERIFIED 20:03, the newest full run); added unit_test_files, tracking_other_runs_ms, sheridan_year, bejczy_year, pick_clip_rise_mm, pick_clip_mass_g; ice refusal quoted at 9.81 (Earth) as the S5 rows say; Gemini 5/5 now carries its caveat (format only; sizes did not always match).",
     "fixer_round_4": "2026-11-07: calculator now follows guardrail.ts order (rescale on narrowest side and height, then weigh the rescaled object): added hand_height_max_mm, grip_height_min_mm, calc_rock_ref_narrow_mm, calc_part_ref_narrow_mm. Calculator friction now labelled by basis (design value or Engineering ToolBox, as in ice_friction/aluminium_friction status 'sourced'). Added the Stop row: stop_hold_s, stop_latch_s, stop_replay_frames (PROGRESS verdict 'M6 VERIFIED 19:29 EST'). The friction pick numbers 78.4 mm / 5.73 s / 0.37 s are the newer verified ones (S3 verifier through HandMapper, M1 VERIFIED s2-pick, EVID s2-repeat.json); HOW_IT_WORKS.md '## Friction grip' still quotes the older S2 builder run (78.2 mm, 5.65 s, 0.25 s) and is owned by another session.",
-    "gpu_names": "At the author's request the page names no GPU: speed numbers say only that they were measured in headless Chrome on a laptop; the cited PROGRESS rows name the hardware."
+    "gpu_names": "At the author's request the page names no GPU: speed numbers say only that they were measured in headless Chrome on a laptop; the cited PROGRESS rows name the hardware.",
+    "late_features_2026_11_08": "Facts for objects built from parts, Talk live, voice arm control and skins, added 2026-11-08 by the site session from the VERIFIED rows of those milestones (parts 00:24, live 00:29, voice-motion 03:54, skins 04:09). Skin timings are one live builder run each, because the verifier did not repeat paid image calls; the page says \"one live run\"."
   },
   "facts": [
     {
@@ -261,12 +262,12 @@
     },
     {
       "id": "unit_tests_passed",
-      "value": 201,
+      "value": 378,
       "unit": "tests",
       "measures": "unit tests passed in the newest full verified run (npm test, Vitest), all of them",
-      "denominator": "201 of 201, in 31 test files",
+      "denominator": "378 of 378, in 46 test files",
       "status": "verified",
-      "source": "PROGRESS verdict 'M4f VERIFIED 20:03 EST' ('npm test 201/201 in 31 files'); same count in PROGRESS verdict 'M9b VERIFIED 19:51 EST' (smoke: '201 unit tests')"
+      "source": "PROGRESS verdict 'skins VERIFIED 04:09 EST' ('full npm test (lock) 46 files 378 passed exit 0'); earlier count 201 of 201 in 31 files at PROGRESS verdict 'M4f VERIFIED 20:03 EST'"
     },
     {
       "id": "pick_rise_mm",
@@ -1410,6 +1411,154 @@
       "denominator": "None",
       "status": "author-observed",
       "source": "Ahmed in chat, 2026-11-07 about 21:59 EST: \"I already tried it it does works\""
+    },
+    {
+      "id": "parts_count_range",
+      "value": "3 to 8",
+      "unit": "parts",
+      "measures": "how many coloured simple shapes Gemini is asked for when it builds an object from parts (the schema accepts 1 to 8, and Gemini sometimes returns one shape)",
+      "denominator": null,
+      "status": "design",
+      "source": "README.md 'What I built' (parts paragraph, 'Gemini is asked for 3 to 8 coloured simple shapes'); server/index.mjs PARTS_PROMPT"
+    },
+    {
+      "id": "parts_live_lifted",
+      "value": "5 of 5",
+      "unit": "requests",
+      "measures": "requests built from parts by live Gemini in one run (2026-11-08 00:23) that were scaled to fit the jaw (ADJUSTED) and passed the simulated lift test",
+      "denominator": "5 requests: AK-47, a plane, a Tesla, a coffee mug, Minecraft grass block",
+      "status": "verified",
+      "source": "PROGRESS verdict 'parts VERIFIED 00:24 EST'; EVID parts/verifier-live.json (rows, all ADJUSTED, lift passed)"
+    },
+    {
+      "id": "parts_plane",
+      "value": {
+        "parts": 7,
+        "mass_g": 10.45,
+        "rise_mm": 78.3
+      },
+      "unit": "parts, g, mm",
+      "measures": "request 'a plane' in the 00:23 live parts run: parts, mass after scaling, rise in the lift test",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID parts/verifier-live.json row 'a plane'; README.md parts table"
+    },
+    {
+      "id": "parts_tesla",
+      "value": {
+        "parts": 6,
+        "mass_g": 196,
+        "rise_mm": 75.8
+      },
+      "unit": "parts, g, mm",
+      "measures": "request 'a Tesla' in the 00:23 live parts run",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID parts/verifier-live.json row 'a Tesla'; README.md parts table"
+    },
+    {
+      "id": "parts_mug",
+      "value": {
+        "parts": 5,
+        "mass_g": 196,
+        "rise_mm": 69.2
+      },
+      "unit": "parts, g, mm",
+      "measures": "request 'a coffee mug' in the 00:23 live parts run",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID parts/verifier-live.json row 'a coffee mug'; README.md parts table"
+    },
+    {
+      "id": "parts_grass_block",
+      "value": {
+        "parts": 5,
+        "mass_g": 196,
+        "rise_mm": 74.3
+      },
+      "unit": "parts, g, mm",
+      "measures": "request 'Minecraft grass block' in the 00:23 live parts run",
+      "denominator": null,
+      "status": "verified",
+      "source": "EVID parts/verifier-live.json row 'Minecraft grass block'; README.md parts table"
+    },
+    {
+      "id": "parts_mass_cap_g",
+      "value": 196,
+      "unit": "g",
+      "measures": "mass the guardrail scales a too-heavy object down to (just under the 200 g hand limit, 0.98 of it); three of the live parts objects ended at this mass",
+      "denominator": null,
+      "status": "design",
+      "source": "web/src/objects/guardrail.ts mass rescale (200 g x 0.98); EVID parts/verifier-live.json mass_g 196 on three rows"
+    },
+    {
+      "id": "talk_live_reply_ms",
+      "value": 2850,
+      "unit": "ms",
+      "measures": "Talk live, one live run with the real key server and a fake microphone: time for Gemini's reply to the spoken question 'what's the gravity on the moon?' to reach the browser (2850.4 ms; 2841 ms at Gemini); the reply quoted 1.62 m/s2",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS 'live | fixer r2 | 00:21 EST' (run B, live Gemini and the real key server, lines typed in through a fake microphone); EVID live-talk-fix/live-talk-real-r2-run1.json (chatMs 2850.4, serverMs 2841). The 'live VERIFIED 00:29 EST' check did not repeat this live run. Not shown on the page."
+    },
+    {
+      "id": "tennis_refused",
+      "value": {
+        "width_mm": 67,
+        "mass_g": 234
+      },
+      "unit": "mm, g",
+      "measures": "Talk live 'make me a tennis ball': Gemini's solid aluminium ball, refused because 234 g is over the 200 g hand limit",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS 'live | fixer r2 | 00:21 EST' (run B, live Gemini and the real key server, lines typed in through a fake microphone); README.md 'What the tests showed' (Talk live bullet); PROGRESS 'live | fixer r2 | 00:21 EST' (233-234 g); in run A of the same round the lift test dropped the 52 mm ball at one seed (README 'What the tests showed')"
+    },
+    {
+      "id": "tennis_followup",
+      "value": {
+        "width_mm": 52,
+        "mass_g": 195.9
+      },
+      "unit": "mm, g",
+      "measures": "the lighter size the app suggested and asked for itself after the refusal; it passed the lift test",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS 'live | fixer r2 | 00:21 EST' (run B, live Gemini and the real key server, lines typed in through a fake microphone); EVID live-talk-fix/live-talk-real-r2-run1.json (followUp 52 mm, mass_g 195.9069, verdict PASS); in run A of the same round the lift test dropped the 52 mm ball at one seed (README 'What the tests showed')"
+    },
+    {
+      "id": "voice_move_mm",
+      "value": 49.7,
+      "unit": "mm",
+      "measures": "how far the gripper moved for the spoken command 'move left 5 cm' (target 50.00 mm, measured 49.74 mm, in 0.94 s)",
+      "denominator": "50 mm asked",
+      "status": "verified",
+      "source": "PROGRESS verdict 'voice-motion VERIFIED 03:54 EST' (c)"
+    },
+    {
+      "id": "voice_stop_drift_mm",
+      "value": 0.99,
+      "unit": "mm",
+      "measures": "most the gripper moved in the 0.5 s after a spoken stop (shown as 'less than 1 mm')",
+      "denominator": null,
+      "status": "verified",
+      "source": "PROGRESS verdict 'voice-motion VERIFIED 03:54 EST' (d)"
+    },
+    {
+      "id": "skin_pro_new_s",
+      "value": 12.5,
+      "unit": "s",
+      "measures": "time to draw a new skin picture with Nano Banana Pro (gemini-3-pro-image), one live run (12461 ms)",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS 'skins | builder | 02:41 EST' ('Pro miss 12461 ms') and 'skins | fixer r2 | 03:58 EST' ('first drawn in 12.5 s'); skins VERIFIED 04:09 did not repeat live paid calls"
+    },
+    {
+      "id": "skin_lite_new_s",
+      "value": "3.1 to 4.5",
+      "unit": "s",
+      "measures": "time to draw a new skin picture with Nano Banana 2 Lite (gemini-3.1-flash-lite-image) in three live runs: 3097 ms (Tesla galaxy), 3447 ms (brushed gold), 4505 ms drawn (galaxy, integration run)",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "PROGRESS 'skins | builder | 02:41 EST' ('Tesla galaxy Lite miss 3097 ms', 'AK-47 brushed gold Lite miss 3447 ms'); EVID integration-voice-skins.json (drawnMs 4505)"
     }
   ]
 }
