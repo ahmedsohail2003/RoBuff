@@ -167,8 +167,6 @@ Every line of application code in this repository: the app in `web/src`, its tes
 
 I built two more features during the hackathon and committed them at 04:24 EST on November 8. Voice motion is in `024d7cf` and skins are in `a9c997d`. The key server's skin route, its daily cap and the chat route's arm actions are in `96ac77a`. The wiring that joins them to the app is in `6e7d66b`.
 
-New for the author this weekend: [AHMED fills in, for example running a contact-physics engine in the browser, or predictive displays]
-
 ### Existed before
 
 - The robot model: MuJoCo Menagerie's SO-ARM100 (`trs_so_arm100`, Apache-2.0), itself derived from The Robot Studio's SO-ARM100.
