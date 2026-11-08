@@ -47,14 +47,14 @@ export const TABS = {
   rock: {
     materials: ['c_type_rock', 's_type_rock', 'ice'], refHullCc: 17.887, refMm: 40, defaultMm: 40,
     refNarrowMm: 27.82, refHeightMm: 33,
-    shape: 'Shape: Bennu-like hull, 17.9 cm³ at 40 mm, scaled.',
+    shape: 'Shape: a Bennu-like rock (Bennu is an asteroid), 17.9 cm³ at 40 mm, scaled to the size you pick.',
   },
   // The part tab is a flat panel, so it is much lighter than a solid lump of the same width.
   // {panel_width_mm} {panel_height_mm}
   part: {
     materials: ['aluminium', 'iron'], refHullCc: 14.786, refMm: 50, defaultMm: 50, matSuffix: ' panel',
     refNarrowMm: 29.57, refHeightMm: 10,
-    shape: 'Shape: CubeSat panel, 50 × 10 mm, 14.8 cm³, scaled.',
+    shape: 'Shape: a CubeSat (small satellite) panel, 50 × 10 mm, 14.8 cm³, scaled to the size you pick.',
   },
 };
 
@@ -67,7 +67,7 @@ export const IRON_SOLID_NOTE = 'A solid 60 mm iron piece was 562 g: refused.';
 export const OBJECTS = [
   {
     name: 'Bennu-like sample', kind: 'asteroid', width: '40 mm', mass: '29 g', lift: '77.3 mm', verdict: 'PASS',
-    note: 'C-type rock at the returned sample’s density, 1.6 g/cm³.',
+    note: 'Carbon-rich rock, at the density of the sample brought back from the asteroid Bennu, 1.6 g/cm³.',
     // {bennu_width_mm} {bennu_mass_g} {bennu_lift_rise_mm} {c_type_density}
   },
   {
@@ -87,18 +87,18 @@ export const OBJECTS = [
   },
   {
     name: 'Size of Texas', kind: 'asteroid', width: '55 mm', mass: '144 g', lift: '76.0 mm', verdict: 'ADJUSTED',
-    note: 'Asked for about 1,200 km. Rebuilt as a 55 mm model, and the receipt says so.',
+    note: 'Asked for about 1,200 km. The app built a 55 mm model instead and said so.',
     asked: 'asked: ~1,200 km',
     // {texas_asked_km} {texas_model_mm} {texas_model_mass_g} {texas_lift_rise_mm}
   },
   {
     name: 'Solid iron, 60 mm', kind: 'fragment', width: '60 mm', mass: '562 g', lift: 'not run', verdict: 'REFUSED',
-    note: 'Too heavy: the hand-flown limit is 200 g. Never spawned.',
+    note: 'Too heavy. The limit for steering by hand is 200 g.',
     // {iron_width_mm} {iron_mass_g} {hand_mass_max_g}
   },
   {
     name: 'Comet ice shard', kind: 'shard', width: '34 mm', mass: '7.9 g', lift: 'not run', verdict: 'REFUSED',
-    note: 'The pads meet it 14° off square, so it needs friction 0.26. Ice has 0.03.',
+    note: 'The jaw pads meet it at a 14° slant, so it needs friction of 0.26. Ice has only 0.03, so it would slip out.',
     // {ice_width_mm} {ice_mass_g} {ice_angle_deg} {ice_friction_needed} {ice_friction}
   },
 ];

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RoBuff · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
-  <meta name="description" content="RoBuff is a browser app I built at UB Hacking 2026. You steer a simulated SO-ARM100 robot arm with your hand through a laptop webcam. I have steered it with my own hand. The measured numbers come from automated tests with a scripted hand, a photo and Chrome's fake camera. The arm picks up rocks and satellite parts using only friction. Every object you ask for is checked against the arm's limits, placed, and given a simulated lift test. An object that fails the lift is removed.">
+  <meta name="description" content="RoBuff is a browser app I built at UB Hacking 2026. You steer a simulated SO-ARM100 robot arm with your hand through a laptop webcam. It works with a real hand. The arm picks up rocks and satellite parts using only friction. Every object you ask for is checked against the arm's limits, placed, and given a simulated lift test. An object that fails the lift is removed.">
   <meta name="theme-color" content="#0b0c0e">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RoBuff">
@@ -75,12 +75,12 @@
             <span class="grey scramble" id="hero-rotate" aria-hidden="true"
                   data-phrases='["with your bare hand.","using only friction.","after a lift test passes."]'>with your bare hand.</span>
           </h1>
-          <p class="summary">A signal takes 2.56&nbsp;s to reach the Moon and come back. In a 2024 University of Bristol study, people steering a robot arm with delays up to 2.6&nbsp;s did worse on every measure. RoBuff lets you steer a simulated robot arm with your hand through a webcam. The arm grips by friction, and a see-through ghost arm shows where it is heading. It works with a real hand on a laptop webcam. In 5 of 5 logged runs with a scripted hand, the cube rose 78.4&nbsp;mm.</p>
+          <p class="summary">A signal takes 2.56&nbsp;s to reach the Moon and come back. In a 2024 University of Bristol study, people steering a robot arm with delays up to 2.6&nbsp;s did worse on every measure. RoBuff lets you steer a simulated robot arm with your hand through a webcam, and switch on the Moon's delay. A see-through ghost arm then shows where the arm is heading before the delayed view comes back. The jaw holds objects by friction alone. It works with a real hand on a laptop webcam. In 5 of 5 test runs steered by code, it lifted a test cube 78.4&nbsp;mm.</p>
           <div class="ctas">
             <a class="btn btn-light" href="#how">See how it works <span class="arrow" aria-hidden="true">&rarr;</span></a>
             <a class="btn btn-ghost" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2">Read the code</a>
           </div>
-          <p class="credit">The ghost arm is a predictive display. DLR, Germany's space agency, flew the idea on its ROTEX space arm in 1993. <a href="#credits">Sources</a></p>
+          <p class="credit">The ghost arm is a predictive display. DLR, Germany's space agency, used the same idea on its ROTEX robot arm in space in 1993. <a href="#credits">Sources</a></p>
         </div>
 
         <!-- Glass calculator: "Can the arm lift it?" -->
@@ -119,12 +119,12 @@
               <div class="big-num"><span id="o-mass">28.6</span><small>g</small></div>
               <p class="need" id="o-need">To hold its weight, the grip needs friction of at least 0.0056. This material has 0.6, a set value, not a measurement. Some shapes need more, because the jaws close at an angle.</p>
               <p class="shape" id="o-shape">Shape: Bennu-like hull, 17.9&nbsp;cm³ at 40&nbsp;mm, scaled.</p>
-              <p class="verdict" id="o-verdict">This fits the arm. Next the app runs a simulated lift test. It passes if the object is still 48&nbsp;mm up after the hold.</p>
+              <p class="verdict" id="o-verdict">This fits the arm. Next the app runs a simulated lift test. It passes if the object is still at least 48&nbsp;mm up after a short hold.</p>
               <p class="verdict extra" id="o-extra" hidden></p>
             </div>
           </div>
           <a class="pill-btn" href="#objects">See how the full check works <span aria-hidden="true">&rarr;</span></a>
-          <p class="footnote">This quick check scales a measured shape to your size and multiplies by density. The app itself weighs the real 3D model, then runs a lift test. The limits are those of the simulated arm.</p>
+          <p class="footnote">This quick check scales a measured shape to the size you pick and multiplies by density. The app itself weighs the real 3D model, then runs a lift test. The limits are those of the simulated arm.</p>
         </form>
       </div>
     </section>
@@ -133,34 +133,32 @@
     <section class="section" id="loop" aria-labelledby="loop-title">
       <div class="wrap">
         <h2 class="h2 center reveal" id="loop-title">How your hand controls the arm.<br><span class="grey">Find the hand, turn it into a command, move the arm.</span></h2>
-        <p class="lede center reveal loop-intro">The hand-to-arm loop runs in your browser. The arm is a free, public robot model called the SO-ARM100, inside a physics simulation. No real robot is attached. In Moon mode, every move and every frame is delayed 1.28&nbsp;s each way, like a real Earth-to-Moon link. A see-through ghost arm shows where the arm is heading. I have not measured yet whether the ghost helps people.</p>
+        <p class="lede center reveal loop-intro">The hand tracking, the arm and the physics all run in your browser. The arm is a simulated SO-ARM100, a small open-source robot arm. No real robot is attached. In Moon mode, your commands take 1.28&nbsp;s to reach the arm. The picture takes another 1.28&nbsp;s to come back, as on a real Earth-to-Moon link. A see-through ghost arm shows where the arm is heading. I have not measured yet whether the ghost helps people.</p>
         <div class="loop-panel reveal">
           <div class="loop-cards">
             <article class="lcard">
               <div class="tag">01 · Sense</div>
               <h3>Find the hand</h3>
-              <p>MediaPipe is Google's hand-tracking model. It finds 21 points on a hand in each camera frame. It runs on the laptop, so no video is uploaded.</p>
+              <p>MediaPipe is Google's hand-tracking model. It finds 21 points on a hand in each camera frame. It runs on your own computer, so no video is uploaded.</p>
               <div class="mini-list">
                 <div><span>Points per hand</span><span>21</span></div>
                 <div><span>Median tracking time</span><span>11 ms</span></div>
                 <div><span>Slowest frame</span><span>17.5 ms</span></div>
                 <div><span>Frames with a hand</span><span>123 / 123</span></div>
               </div>
-              <p class="foot">Timed in an automated Chrome test, with Chrome's fake camera showing a photo of a hand. A real hand on a webcam works too, but those runs were not timed.</p>
+              <p class="foot">Timed in an automated test, with a photo of a hand as the camera feed. I have also used it with my own hand, but did not time it.</p>
             </article>
             <div class="connector" aria-hidden="true"><div class="dots"><i></i><i></i></div><span class="tag">21 points</span></div>
             <article class="lcard dark">
               <div class="tag">02 · Understand</div>
               <h3>Turn points into a steady command</h3>
               <div class="big">One Euro filter</div>
-              <p class="cap">is applied to every hand point. It smooths a lot when the hand is still and a little when it moves.</p>
-              <p>I retuned it tonight. The new jitter and response numbers are in the README. I tested those myself.</p>
+              <p class="cap">smooths the position of your palm. When your hand is still, it smooths a lot, so the arm shakes less. When your hand moves, it smooths less, so the arm lags less.</p>
               <ul class="checks">
-                <li>The jaw closes when the pinch is below <span class="mono">0.25</span> and opens above <span class="mono">0.38</span></li>
-                <li>If the hand is lost, the arm and the grip freeze</li>
-                <li>The arm's target moves at most <span class="mono">0.25 m/s</span></li>
+                <li>Pinch to close the jaw, and open your fingers to let go</li>
+                <li>If the camera loses your hand, the arm holds still and keeps its grip</li>
+                <li>The point the arm aims for moves at most <span class="mono">0.25 m/s</span>, so a sudden jerk cannot fling the arm</li>
               </ul>
-              <p class="foot">I set the pinch thresholds from a sample photo. I have not tuned them on a real hand yet.</p>
             </article>
             <div class="connector" aria-hidden="true"><div class="dots"><i></i><i></i></div><span class="tag">Palm + pinch</span></div>
             <article class="lcard">
@@ -177,7 +175,7 @@
             </article>
           </div>
           <div class="bracket" aria-hidden="true"></div>
-          <p class="bracket-cap">The whole loop runs in the browser · 240 frames per second in an automated Chrome test on a laptop · physics at 500 steps per second</p>
+          <p class="bracket-cap">Everything runs in the browser · 240 frames per second in an automated test · physics at 500 steps per second</p>
           <div class="rings">
             <div class="ring">
               <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="22"/><circle class="val" cx="26" cy="26" r="22" data-ring="1"/></svg>
@@ -189,7 +187,7 @@
             </div>
           </div>
         </div>
-        <p class="tag panel-caption">From my automated test runs · scripted hand and fake camera · all simulated</p>
+        <p class="tag panel-caption">From my automated tests · a hand steered by code and a photo as the camera · all simulated</p>
       </div>
     </section>
 
@@ -205,16 +203,16 @@
             <div class="copy">
               <div class="num">01</div>
               <h3 id="step1-title">Your hand drives the arm</h3>
-              <p>MediaPipe finds your hand in each webcam frame. Move your hand and the arm follows. Move it nearer or farther to change the reach. Pinch to close the jaw. I have used it with my own hand on a laptop webcam. The automated tests use a scripted hand, a photo and Chrome's fake camera.</p>
+              <p>MediaPipe finds your hand in each webcam frame. Move your hand and the arm follows. Move it nearer or farther to change the reach. Pinch to close the jaw. I have tried it with my own hand on a laptop webcam, and it works. The tests and the picture here used a hand steered by code.</p>
             </div>
-            <div class="mini" aria-label="Example of the app's hand-tracking status strip, with values from the fake-camera test">
+            <div class="mini" aria-label="Example of the app's hand-tracking status strip, with values from a test that used a photo of a hand">
               <div class="head"><span class="tag">Hand tracking</span></div>
-              <div class="field"><span>input</span><b>fake camera (test)</b></div>
+              <div class="field"><span>input</span><b>test photo</b></div>
               <div class="field"><span>hand</span><b><span class="dot-live" aria-hidden="true"></span>found</b></div>
               <div class="field"><span>tracking</span><b>11 ms</b></div>
               <div class="field"><span>grip</span><b id="mini-grip">open</b></div>
               <div class="field"><span>points</span><b>21</b></div>
-              <p class="mini-tag tag">Example values from the fake-camera test</p>
+              <p class="mini-tag tag">Example values from a test with a photo of a hand</p>
             </div>
             <span class="sr-only">Screenshot of the simulated arm on a dark lunar-style floor under a starfield, holding the red test cube, steered by the app's scripted virtual hand, drawn as horizontal halftone lines.</span>
           </article>
@@ -223,7 +221,7 @@
             <div class="copy">
               <div class="num">02</div>
               <h3 id="step2-title">Ask for an object</h3>
-              <p>You type a request. When a key is set, Gemini, Google's AI model, turns it into an object description. Without a key, an offline parser does this. The app then builds a 3D model from it. Before the object appears, 7 checks decide whether the arm could hold it.</p>
+              <p>You type what you want. Gemini, Google's AI model, turns your words into a description the app can build. Without Gemini, a simple keyword reader in the app does this instead. The app builds a 3D model. Before it appears, 7 checks decide whether the arm could hold it.</p>
             </div>
             <div class="mini" id="mini-describe" role="group" aria-label="Describe an object: pick a tested object to see its result">
               <div class="head"><span class="tag">Describe an object</span></div>
@@ -233,7 +231,7 @@
                 <button type="button" aria-pressed="false" data-object="Comms dish">Comms dish</button><button type="button" aria-pressed="false" data-object="Comet ice shard">Comet ice shard</button><button type="button" aria-pressed="false" data-object="Solid iron, 60 mm">Solid iron, 60 mm</button>
               </div>
               <div class="mini-result" id="mini-result" aria-live="polite" hidden></div>
-              <p class="mini-tag tag">Gemini 3.8 Flash when a key is set · offline parser without one</p>
+              <p class="mini-tag tag">These results used the keyword reader · Gemini 3.8 Flash when connected</p>
             </div>
             <span class="sr-only">Screenshot of the simulated arm under a starfield, jaw open above a generated Bennu-like rock on the floor, drawn as halftone lines.</span>
           </article>
@@ -242,16 +240,16 @@
             <div class="copy">
               <div class="num">03</div>
               <h3 id="step3-title">The checks, then the lift test</h3>
-              <p>A hidden copy of the simulation lifts the object with the same arm. It passes only if the object is at least 48&nbsp;mm up at the end of the hold.</p>
+              <p>A hidden copy of the simulation lifts the object with the same arm. It holds the object up, and it passes only if the object is still at least 48&nbsp;mm up at the end.</p>
             </div>
             <div class="mini" aria-label="Example receipt for the Bennu-like sample">
               <div class="head"><span class="tag">Receipt · Bennu-like sample</span></div>
               <ul class="ticks" id="mini-ticks">
-                <li><span class="ok">✓</span><span>Mesh is valid · 642 vertices</span></li>
-                <li><span class="ok">✓</span><span>Hull · 18 cm³</span></li>
-                <li><span class="ok">✓</span><span>Jaw angle · 28&nbsp;mm side</span></li>
+                <li><span class="ok">✓</span><span>3D shape is valid · 642 points</span></li>
+                <li><span class="ok">✓</span><span>Volume · 18 cm³</span></li>
+                <li><span class="ok">✓</span><span>Jaw closes on the 28&nbsp;mm side</span></li>
                 <li><span class="ok">✓</span><span>Scale · as asked</span></li>
-                <li><span class="ok">✓</span><span>Mass · 29&nbsp;g of 200 g</span></li>
+                <li><span class="ok">✓</span><span>Mass · 29&nbsp;g, limit 200&nbsp;g</span></li>
                 <li><span class="ok">✓</span><span>Friction · needs 0.0056, has 0.6</span></li>
                 <li><span class="ok">✓</span><span>Grip height · fits</span></li>
                 <li><span class="ok">✓</span><span>Lift test · 77.3 mm</span></li>
@@ -275,7 +273,7 @@
           <div class="frame-head"><span class="tag">Requests tested in the browser · 7</span><span class="tag live">Simulated arm · Earth gravity</span></div>
           <div class="tiles" id="tiles" role="group" aria-label="Requests tested in the browser"></div>
           <div class="sel" aria-live="polite">
-            <b id="st-name">Bennu-like sample</b><span id="st-note">C-type rock at the returned sample's density, 1.6&nbsp;g/cm³.</span>
+            <b id="st-name">Bennu-like sample</b><span id="st-note">Carbon-rich rock, at the density of the sample brought back from the asteroid Bennu, 1.6&nbsp;g/cm³.</span>
           </div>
           <div class="stats">
             <div><span class="tag">Width</span><b id="st-width">40 mm</b></div>
@@ -295,14 +293,14 @@
         <h2 class="h2 reveal tl-title" id="tl-title">One rock, start to finish.<br><span class="grey">The Bennu-like sample, from typed request to the arm holding it.</span></h2>
         <div class="timeline reveal" id="tl">
           <div class="line" aria-hidden="true"><i></i></div>
-          <div class="node"><div class="ring-dot"></div><p class="lbl">Ask</p><p class="val"><span data-count="40">40</span> <small>mm</small></p><p class="cap">I asked for a Bennu-like sample. The offline parser read the request.</p></div>
-          <div class="node"><div class="ring-dot"></div><p class="lbl">Weigh</p><p class="val"><span data-count="29">29</span> <small>g</small></p><p class="cap">18&nbsp;cm³ at 1.6&nbsp;g/cm³, the density of the returned sample.</p></div>
-          <div class="node"><div class="ring-dot"></div><p class="lbl">Check</p><p class="val"><span data-count="7">7</span> <small>checks</small></p><p class="cap">Sanity, hull, jaw angle, scale, mass, friction, grip height.</p></div>
-          <div class="node"><div class="ring-dot"></div><p class="lbl">Spawn</p><p class="val"><span data-count="258.5" data-decimals="1">258.5</span> <small>ms</small></p><p class="cap">The physics scene is rebuilt with the rock in it. Timed in an automated Chrome test on my laptop.</p></div>
+          <div class="node"><div class="ring-dot"></div><p class="lbl">Ask</p><p class="val"><span data-count="40">40</span> <small>mm</small></p><p class="cap">I asked for a Bennu-like sample. The app's keyword reader handled it, not Gemini.</p></div>
+          <div class="node"><div class="ring-dot"></div><p class="lbl">Weigh</p><p class="val"><span data-count="29">29</span> <small>g</small></p><p class="cap">18&nbsp;cm³ at 1.6&nbsp;g/cm³, the density of the sample brought back from Bennu.</p></div>
+          <div class="node"><div class="ring-dot"></div><p class="lbl">Check</p><p class="val"><span data-count="7">7</span> <small>checks</small></p><p class="cap">Valid shape, volume, jaw angle, size, mass, friction, grip height.</p></div>
+          <div class="node"><div class="ring-dot"></div><p class="lbl">Place</p><p class="val"><span data-count="258.5" data-decimals="1">258.5</span> <small>ms</small></p><p class="cap">The physics scene is rebuilt with the rock in it. Timed in an automated Chrome test on my laptop.</p></div>
           <div class="node"><div class="ring-dot"></div><p class="lbl">Lift test</p><p class="val"><span data-count="77.3" data-decimals="1">77.3</span> <small>mm</small></p><p class="cap">A hidden copy of the arm lifts it. A rise of 48&nbsp;mm or more is a pass.</p></div>
-          <div class="node"><div class="ring-dot"></div><p class="lbl">Pick</p><p class="val"><span data-count="82.8" data-decimals="1">82.8</span> <small>mm</small></p><p class="cap">The scripted hand steers the arm, and the arm holds it for 5.77&nbsp;s.</p></div>
+          <div class="node"><div class="ring-dot"></div><p class="lbl">Pick</p><p class="val"><span data-count="82.8" data-decimals="1">82.8</span> <small>mm</small></p><p class="cap">A hand steered by code moves the arm, and the arm holds it for 5.77&nbsp;s.</p></div>
         </div>
-        <p class="timeline-src reveal">Between steps 4 and 5 the rock rolled 18&nbsp;mm as it settled. The lift test starts from where it stopped.</p>
+        <p class="timeline-src reveal">After it was placed, the rock rolled 18&nbsp;mm as it settled. The lift test starts from where it stopped.</p>
       </div>
     </section>
 
@@ -323,7 +321,7 @@
               <svg viewBox="0 0 300 140"><g fill="#0b0c0e"><circle cx="150" cy="112" r="3.5"/><circle cx="128" cy="92" r="3"/><circle cx="118" cy="72" r="3"/><circle cx="112" cy="54" r="3"/><circle cx="138" cy="66" r="3"/><circle cx="136" cy="44" r="3"/><circle cx="135" cy="26" r="3"/><circle cx="154" cy="64" r="3"/><circle cx="155" cy="40" r="3"/><circle cx="156" cy="20" r="3"/><circle cx="170" cy="66" r="3"/><circle cx="173" cy="46" r="3"/><circle cx="175" cy="30" r="3"/><circle cx="182" cy="76" r="3"/><circle cx="192" cy="62" r="3"/><circle cx="200" cy="50" r="3"/></g><g fill="none" stroke="#0b0c0e" stroke-width="1.2"><path d="M150 112L128 92L118 72L112 54M150 112L138 66L136 44L135 26M150 112L154 64L155 40L156 20M150 112L170 66L173 46L175 30M150 112L182 76L192 62L200 50"/></g></svg>
             </div>
             <div class="top"><h3>MediaPipe Hand Landmarker</h3><span class="status ok">Working · tried with a real hand</span></div>
-            <p>Google's hand-tracking model. It finds 21 points on a hand in each camera frame. It runs on the laptop, so no video is uploaded. It took a median 11&nbsp;ms per frame on Chrome's fake camera.</p>
+            <p>Google's hand-tracking model. It finds 21 points on a hand in each camera frame. It runs on your own computer, so no video is uploaded. In a test that fed it a photo of a hand, it took a median 11&nbsp;ms per frame.</p>
           </article>
           <article class="tcard reveal">
             <div class="vis" aria-hidden="true">
@@ -337,24 +335,24 @@
               <svg viewBox="0 0 300 140"><g fill="none" stroke="#0b0c0e" stroke-width="1.5"><rect x="78" y="26" width="144" height="92" rx="8"/><path d="M78 44h144"/></g><g fill="#0b0c0e"><circle cx="90" cy="35" r="2.5"/><circle cx="99" cy="35" r="2.5"/><circle cx="108" cy="35" r="2.5"/></g><g fill="none" stroke="#0b0c0e" stroke-width="1.2"><path d="M96 62h64M96 76h44M96 90h56" stroke-dasharray="2 4"/></g><path d="M172 78l0 26 7-7 6 12 5-2-6-12 10 0z" fill="#fff" stroke="#0b0c0e" stroke-width="1.4" stroke-linejoin="round"/></svg>
             </div>
             <div class="top"><h3>Playwright and Vitest</h3><span class="status ok">Working</span></div>
-            <p>These are automated test tools. Playwright drives a real Chrome browser from a script, so anyone can re-run the scripted pick, the fake camera and the object requests. Vitest tests the physics, the filters and the checks without a browser. 201 of 201 tests passed.</p>
+            <p>These are automated test tools. Playwright drives a real Chrome browser from a script. Anyone can use it to re-run my tests of the pick, the hand tracking and the object requests. Vitest tests the physics, the filters and the checks without a browser. 201 of 201 tests passed.</p>
           </article>
           <article class="tcard reveal">
             <div class="vis" aria-hidden="true">
               <svg viewBox="0 0 300 140"><rect x="36" y="38" width="236" height="28" rx="6" fill="none" stroke="#0b0c0e" stroke-width="1.2"/><g font-family="Geist Mono, monospace" font-size="11" fill="#0b0c0e"><text x="48" y="56">"an asteroid the size of Texas"</text><text x="48" y="92">&#8594; asteroid · C-type rock</text></g></svg>
             </div>
             <div class="top"><h3>Gemini 3.8 Flash</h3><span class="status ok">Working (format check 5 / 5)</span></div>
-            <p>Google's AI model. It turns a typed request into an object description (kind, size, material) that the checks can test. A small server holds the API key, so the key never reaches the page. In a live test, 5 of 5 replies came back in the right format, with a median of 3867&nbsp;ms. That test only checked the format. The sizes it returned did not always match the request.</p>
+            <p>Google's AI model. It turns a typed request into an object description (kind, size, material) that the checks can test. In a live test, 5 of 5 replies came back in the right format. The median reply took 3867&nbsp;ms. That test only checked the format. The sizes it returned did not always match the request.</p>
           </article>
           <article class="tcard reveal">
             <div class="vis" aria-hidden="true">
               <svg viewBox="0 0 300 140"><g fill="none" stroke="#0b0c0e" stroke-width="1.5"><circle cx="90" cy="70" r="22"/><circle cx="216" cy="70" r="10"/><path d="M116 70h86" stroke-dasharray="4 5"/></g><text x="136" y="60" font-family="Geist Mono, monospace" font-size="11" fill="#0b0c0e">2.56 s</text></svg>
             </div>
             <div class="top"><h3>The ghost arm (a predictive display)</h3><span class="status wip">Built · result not measured</span></div>
-            <p>A second simulation runs your commands with no delay. It draws a see-through arm where the real arm is heading. ROTEX flew this idea in 1993. Whether it helps people is <b>not measured yet</b>.</p>
+            <p>A second simulation runs your commands with no delay. It draws a see-through arm where the delayed arm is heading. DLR used the same idea on its ROTEX robot arm in space in 1993. Whether it helps people is <b>not measured yet</b>.</p>
           </article>
         </div>
-        <p class="tools-note reveal">Voice is hold-to-talk. It uses the browser's speech recognition and an offline list of commands. ElevenLabs is a text-to-speech service. When its key is set on the local key server, it gives the console a natural voice. In a live check, 5 of 5 lines came back as audio, and the first audio arrived after a median 176&nbsp;ms. Without the key, the browser's built-in voice speaks instead, and the screen says it is offline. Captions are always on. Without a Gemini key, an offline parser reads requests instead, and the screen says so.</p>
+        <p class="tools-note reveal">You can also talk to RoBuff. Hold V or the Hold to talk button and say a command, such as "stop" or "Moon". In Chrome, the Talk live button listens hands-free. Lines it does not know go to Gemini when it is connected. ElevenLabs, a text-to-speech service, speaks the replies. In a live check, 5 of 5 test lines came back as audio, and the first audio arrived after a median 176&nbsp;ms. Without ElevenLabs, the browser's own voice speaks. Captions are always on.</p>
       </div>
     </section>
 
@@ -367,22 +365,22 @@
             <caption class="sr-only">State of each part of RoBuff</caption>
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">What that means</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a photo and a fake camera. The hand was found in 123 of 123 frames. <b>It also works with my real hand on a laptop webcam. I tried it, but those runs were not timed.</b></td></tr>
-              <tr><th scope="row">Friction pick and lift</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>The cube rose 78.4&nbsp;mm and stayed up 5.73&nbsp;s, with a scripted hand steering through the normal hand-to-arm path. 5 of 5 repeats from one start passed. 6 of 9 positions worked.</td></tr>
+              <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand (one steered by code), and with a photo of a hand fed in as the camera. The hand was found in 123 of 123 frames. <b>It also works with my real hand on a laptop webcam. I tried it, but did not time it.</b> The pinch point is not tuned for a live hand yet.</td></tr>
+              <tr><th scope="row">Friction pick and lift</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>A hand steered by code moved the arm through the same steps a webcam hand uses. The test cube rose 78.4&nbsp;mm and stayed up 5.73&nbsp;s. 5 of 5 repeats from one start passed. 6 of 9 cube positions worked.</td></tr>
               <tr><th scope="row">Generated objects and lift test</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>7 requests in the browser. 5 were lifted. 2 were refused, with the numbers shown.</td></tr>
               <tr><th scope="row">Gravity menu</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Earth, Mars, Moon, Bennu and orbit. A cube dropped 0.10&nbsp;m landed in 0.354&nbsp;s on the Moon (theory says 0.351&nbsp;s) and 0.144&nbsp;s on Earth (theory says 0.143&nbsp;s).</td></tr>
               <tr><th scope="row">Robot arm</th><td class="state"><span class="state-dot half" aria-hidden="true"></span>Simulated</td><td>MuJoCo physics on the public SO-ARM100 model. No real robot is connected.</td></tr>
               <tr><th scope="row">Contact at low gravity</th><td class="state"><span class="state-dot half" aria-hidden="true"></span>Simulated, unreliable</td><td>At Bennu gravity, a 5 cm/s push lifted a resting cube 46.9&nbsp;mm. That is an error in the simulation, not real physics. The app shows a warning when gravity is below 0.1&nbsp;m/s².</td></tr>
-              <tr><th scope="row">Object requests</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Gemini 3.8 Flash, through a small server that holds the key. In a live test, 5 of 5 replies came back in the right format, with a median of 3867&nbsp;ms. That test only checked the format. The sizes returned did not always match the request. With no key, an offline keyword parser takes over, and the screen says so. The 7 requests in the object grid were run offline.</td></tr>
-              <tr><th scope="row">Voice</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works with a key, offline without one</td><td>Hold-to-talk, using the browser's speech recognition and an offline list of commands. With its key set, ElevenLabs speaks each reply. In a live check, 5 of 5 lines came back as audio, and the first audio arrived after a median 176&nbsp;ms. Without the key, the browser's built-in voice speaks, and the screen says it is offline. Captions are always on.</td></tr>
-              <tr><th scope="row">Stop</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with scripted hands</td><td>Pressing Space freezes every joint and the jaw. Only the on-screen Resume button clears it. With <span class="mono">?hands=2</span>, holding both hands open for 0.4&nbsp;s also stops the arm. In tests it stopped at 0.40&nbsp;s. A 601-frame replay of a pinch and carry never set it off by mistake. <b>I have not logged a real-hand test of the stop yet.</b></td></tr>
+              <tr><th scope="row">Object requests</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Gemini 3.8 Flash reads typed requests. In a live test, 5 of 5 replies came back in the right format. The median reply took 3867&nbsp;ms. That test only checked the format. The sizes returned did not always match the request. Without Gemini, a simple keyword reader in the app takes over. The 7 requests shown above used that keyword reader, not Gemini.</td></tr>
+              <tr><th scope="row">Voice</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works, with a fallback</td><td>Hold V to talk, or use Talk live in Chrome to talk hands-free. Chrome's speech recognition needs the internet. Known commands are handled in the browser. Other lines go to Gemini when it is connected. ElevenLabs speaks each reply. In a live check, 5 of 5 test lines came back as audio, and the first audio arrived after a median 176&nbsp;ms. Without ElevenLabs, the browser's own voice speaks. Captions are always on.</td></tr>
+              <tr><th scope="row">Stop</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with scripted hands</td><td>Pressing Space freezes every joint and the jaw. Only the on-screen Resume button clears it. In two-hand mode, holding both hands open for 0.4&nbsp;s also stops the arm. In tests it stopped at 0.40&nbsp;s. A 601-frame replay of a pinch and carry never set it off by mistake. <b>A real-hand test of the stop is not logged yet.</b></td></tr>
               <tr><th scope="row">Earth-Moon delay</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>In Moon mode, commands reached the arm 1.28&nbsp;s late, and the view came back another 1.28&nbsp;s late. Measured in the simulation.</td></tr>
-              <tr><th scope="row">Ghost arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>Two simulations run side by side. The ghost assumes a rock of 1.6&nbsp;g/cm³ with friction 0.8. The true arm uses a hidden 2.3&nbsp;g/cm³ and 0.6. So the two really disagree.</td></tr>
-              <tr><th scope="row">Ghost result</th><td class="state"><span class="state-dot dash" aria-hidden="true"></span>Not measured yet</td><td>0 logged trials with a person. The trial logger is built. I wrote the pass rule before collecting any data. With the ghost on, the median time must be at most 0.75 of the time with it off, with no fewer successes. I am the only operator, so the result will not generalise.</td></tr>
+              <tr><th scope="row">Ghost arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>Two simulations run side by side. The ghost guesses the rock is 1.6&nbsp;g/cm³ with friction 0.8. The delayed arm uses a hidden 2.3&nbsp;g/cm³ and 0.6. So the ghost's guess can be wrong, as it would be with a real rock.</td></tr>
+              <tr><th scope="row">Ghost result</th><td class="state"><span class="state-dot dash" aria-hidden="true"></span>Not measured yet</td><td>No trials with a person are recorded yet. The tool to record them is built. I wrote the pass rule before collecting any data. With the ghost on, the median task time must be at most 0.75 of the time without it. It must also succeed at least as often. I will be the only person tested, so the result will not show that it helps other people.</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="real-note reveal">The app's hard limits for objects are 10 to 70&nbsp;mm wide and up to 300&nbsp;g. I set them with a safety margin from grasp tests on the simulated arm. For steering by hand, the app uses tighter limits of 15 to 55&nbsp;mm and 200&nbsp;g. I chose these from a review of my earlier SO-ARM100 projects. I have not re-measured them with real-hand control yet. The calculator and the refusals use these tighter limits. The payload of a real SO-ARM100 is not verified.</p>
+        <p class="real-note reveal">Objects can be 10 to 70&nbsp;mm wide and up to 300&nbsp;g. I set those limits with a safety margin from grasp tests on the simulated arm. When you steer by hand, the limits are tighter. Objects must be 15 to 55&nbsp;mm wide and at most 200&nbsp;g. These are estimates. I have not tested them with a live hand yet. The calculator and the refusals use these tighter limits. I have not checked how much a real SO-ARM100 can lift.</p>
       </div>
     </section>
 
@@ -395,10 +393,10 @@
         <canvas class="space3d" id="cta-space" aria-hidden="true"></canvas>
         <canvas class="cloud" id="cta-cloud" aria-hidden="true"></canvas>
         <div class="inner">
-          <h2 class="h2" id="cta-title">Try the Moon's 2.56&nbsp;s delay. <span class="grey">In your browser, with no robot.</span></h2>
-          <p>Predictive displays come from work at MIT (Sheridan, 1984) and JPL (Bejczy, Kim and Venema, around 1990). DLR flew one on its ROTEX arm in 1993. I scanned 755 saved UB Hacking entries for keywords. None put an arm in a physics simulation or modelled light delay. The scan read full text for Fall 2025 but only titles and taglines for older years, so it can miss entries.</p>
+          <h2 class="h2" id="cta-title">Try the Moon's 2.56&nbsp;s delay. <span class="grey">On your own computer, with no robot.</span></h2>
+          <p>Predictive displays come from work at MIT (Sheridan, 1984) and JPL (Bejczy, Kim and Venema, 1990). DLR used one on its ROTEX robot arm in space in 1993. I searched 755 past UB Hacking projects. None put an arm in a physics simulation or added a space signal delay. For Fall 2025 I searched the full project pages. For older years I searched only titles and taglines, so I may have missed some.</p>
           <div class="ctas">
-            <a class="btn btn-light" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2">Read the code <span class="arrow" aria-hidden="true">&rarr;</span></a>
+            <a class="btn btn-light" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2#try-it">How to run it <span class="arrow" aria-hidden="true">&rarr;</span></a>
             <a class="btn btn-ghost" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2/blob/main/HOW_IT_WORKS.md">How each part works</a>
           </div>
         </div>
@@ -416,7 +414,7 @@
             <span>RoBuff</span>
           </a>
           <p>RoBuff · Ahmed Sohail Butt, solo · UB Hacking 2026 · Apache-2.0</p>
-          <p>The name comes from robot plus Buffalo, and a buff arm.</p>
+          <p>The name comes from robot plus Buffalo, and the robot arm looks kind of buff as well.</p>
         </div>
         <div>
           <h3>On this page</h3>
@@ -432,10 +430,8 @@
         </div>
       </div>
       <div class="credits" id="credits">
-        <p>I wrote every line of app code during UB Hacking 2026. The first commit is at 1:43 PM EST on November 7. Hacking opened at 1:30 PM.</p>
-        <p>My earlier related projects are the WorkCell series, EmberHacks "The cell", HandSignal and FleetLine. No code from them is reused here. While planning, I read their repositories for facts only, such as arm limits and package names. I copied nothing. What carries over is my experience, the same public arm model and the same hand-tracking library.</p>
-        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Page drawings: the Moon, the planets, the stars, the cratered ground and the asteroid are dots drawn in code, with three.js (MIT) in the dark bands. They are illustrative, not maps or real shapes. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
-        <p>I planned, coded and tested this with Claude Code, Anthropic's AI coding assistant. I directed and reviewed the work. Inside the app, the MediaPipe hand landmarker runs in the browser, and Gemini 3.8 Flash reads typed object requests when a key is set on the key server.</p>
+        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Page drawings: the Moon, the planets, the stars, the cratered ground and the asteroid are dots drawn in code. They are illustrative, not maps or real shapes. The dark sections draw them with three.js (MIT licence). Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
+        <p>I planned, coded and tested this with Claude Code, Anthropic's AI coding assistant. I directed and reviewed the work. Inside the app, MediaPipe tracks the hand in the browser. When it is connected, Gemini 3.8 Flash reads typed and spoken requests.</p>
       </div>
     </div>
   </footer>

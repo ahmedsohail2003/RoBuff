@@ -129,7 +129,7 @@ export function mountCalculator(form) {
       ? 'Too small to hold well. The jaw needs at least 15 mm. The app scales it up and tells you by how much.'
       : 'Too thin for the fingertips to reach. The app scales it up and tells you by how much.';
     else if (mat.value === 'ice') text = 'Ice has friction 0.03, so the angle of the pads decides. The ice shard in the app needed 0.26, so it was refused.';
-    else text = 'This fits the arm. Next the app runs a simulated lift test. It passes if the object is still 48 mm up after the hold.';
+    else text = 'This fits the arm. Next the app runs a simulated lift test. It passes if the object is still at least 48 mm up after a short hold.';
     oVerdict.textContent = text;
     // One note line: the low-gravity warning and the solid-iron reminder share it, so the panel keeps its height.
     const notes = [];
