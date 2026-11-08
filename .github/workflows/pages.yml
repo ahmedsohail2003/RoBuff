@@ -1,7 +1,7 @@
 # Publishes the Robuff project page (the static files in site/) with GitHub Pages.
 # Runs on every push to main that changes site/, and by hand from the Actions tab.
 # One-time setup on GitHub: Settings > Pages > Source: "GitHub Actions".
-# The page then lives at https://ahmedsohail2003.github.io/buffalo-hackathon-2/
+# The page then lives at https://ahmedsohail2003.github.io/RoBuff/
 name: Publish the project page
 
 on:
