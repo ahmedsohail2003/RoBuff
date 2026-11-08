@@ -1,4 +1,4 @@
-import { HandMapper } from './handMapper';
+import { DEFAULT_HAND_MAPPER, HandMapper } from './handMapper';
 import type { HandState, InputSource } from './handState';
 import { bestHand, createHandTracker, handsFromResult, warmUp, type HandTracker } from './handTracker';
 
@@ -6,6 +6,11 @@ export type WebcamState = 'idle' | 'starting-camera' | 'loading-model' | 'runnin
 
 /** The hand model, loaded and warmed before the camera starts. */
 export type TrackerState = 'idle' | 'loading' | 'warming-up' | 'warm' | 'failed';
+
+/** ?flip=1: the camera already mirrors its picture, so left and right are swapped back. */
+export function flipFromUrl(search: string): boolean {
+  return new URLSearchParams(search).get('flip') === '1';
+}
 
 /** With no new detection for this long, the hand counts as lost and the arm holds. */
 const STALE_MS = 400;
@@ -45,7 +50,7 @@ export class WebcamSource implements InputSource {
   warmupMs: number | null = null;
   private preparing: Promise<HandTracker> | null = null;
   private stream: MediaStream | null = null;
-  private readonly mapper = new HandMapper();
+  private readonly mapper: HandMapper;
   private latest: HandState | null = null;
   private lastVideoTime = -1;
   private lastDetectMs = -Infinity;
@@ -56,8 +61,14 @@ export class WebcamSource implements InputSource {
   private firstDetectionMs: number | null = null;
   private lastScore: number | null = null;
 
-  constructor(readonly numHands: 1 | 2 = 1) {
+  constructor(
+    readonly numHands: 1 | 2 = 1,
+    readonly flipX: boolean = flipFromUrl(location.search),
+  ) {
+    this.mapper = new HandMapper({ ...DEFAULT_HAND_MAPPER, mirrorX: flipX });
     this.video = document.createElement('video');
+    // The overlay mirrors the camera picture like a selfie, unless the camera already did.
+    if (flipX) this.video.dataset.mirrored = '1';
     this.video.muted = true;
     this.video.playsInline = true;
   }
@@ -144,6 +155,7 @@ export class WebcamSource implements InputSource {
       state: this.state,
       message: this.message,
       numHands: this.numHands,
+      flipX: this.flipX,
       trackerState: this.trackerState,
       warmupMs: this.warmupMs,
       delegate: this.tracker?.delegate ?? null,

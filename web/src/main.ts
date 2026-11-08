@@ -60,6 +60,7 @@ async function main(): Promise<void> {
     const app = new App(loop, new Viewport(viewportElement, mujoco, model), () => {
       states?.frame();
       const source = loop.source;
+      app.viewport.setOrbitButton(source?.kind === 'mouse' ? 'right' : 'left');
       overlay.canvas.hidden = !source || source.kind === 'mouse';
       if (!overlay.canvas.hidden) {
         overlay.draw(loop.lastHand, source instanceof WebcamSource ? source.video : null, source!.kind === 'webcam' ? 'camera' : 'virtual hand');

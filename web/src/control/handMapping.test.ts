@@ -14,9 +14,9 @@ import { ARM_WORKSPACE } from './workspace';
 
 const reach = (p: Vec3) => Math.hypot(p[0] - HAND_WORKSPACE.shoulder[0], p[1] - HAND_WORKSPACE.shoulder[1], p[2] - HAND_WORKSPACE.shoulder[2]);
 
-/** Same algebra as worldToPalm, kept here so the test does not lean on the code under test. */
+/** Same algebra as worldToPalm (spans 0.5, 0.25, 0.3 m times the 1.4 hand gain, about the middle), kept here so the test does not lean on the code under test. */
 function palmFor(world: Vec3): Vec3 {
-  return [0.5 - world[0] / 0.5, 1 - (world[2] - 0.01) / 0.25, (-0.1 - world[1]) / 0.3];
+  return [0.5 - world[0] / 0.7, 0.5 - (world[2] - 0.135) / 0.35, 0.5 - (world[1] + 0.25) / 0.42];
 }
 
 let loop: ControlLoop;
@@ -67,7 +67,7 @@ describe('hand target clamp (M1 step 9)', () => {
   });
 
   it('describes the range with the numbers it uses', () => {
-    expect(handRangeText()).toBe('hand range: 50 cm side to side, 1-26 cm high, 10-40 cm out; kept within 29 cm of the shoulder (arm reach 33 cm)');
+    expect(handRangeText()).toBe('hand range: 70 cm side to side, 1-26 cm high, 4-46 cm out; kept within 29 cm of the shoulder (arm reach 33 cm)');
   });
 });
 

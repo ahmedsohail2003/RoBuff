@@ -1,3 +1,4 @@
+import { CONTROL_GAINS } from '../control/gains';
 import type { HandState, Landmark } from './handState';
 import { isHand, palmFromLandmarks, pinchRatio } from './landmarks';
 import { OneEuroFilter3, type OneEuroOptions } from './oneEuro';
@@ -16,10 +17,17 @@ export interface HandMapperOptions {
   pinch: PinchLatchOptions;
   /** After the hand is lost, frames it must be seen again before the arm follows it. */
   reacquireFrames: number;
+  /**
+   * Swap image left and right before mapping. Off for a normal webcam, whose picture is not
+   * mirrored (palmToWorld already turns the user's right into screen right); on (?flip=1)
+   * for a camera that delivers an already mirrored picture.
+   */
+  mirrorX?: boolean;
 }
 
-const IMAGE_AXIS: OneEuroOptions = { minCutoffHz: 1.0, beta: 2.0, derivativeCutoffHz: 1.0 };
-const DEPTH_AXIS: OneEuroOptions = { minCutoffHz: 0.5, beta: 1.0, derivativeCutoffHz: 1.0 };
+// Tuned in control/gains.ts (x, y beta was 2.0; depth unchanged).
+const IMAGE_AXIS: OneEuroOptions = { ...CONTROL_GAINS.imageFilter };
+const DEPTH_AXIS: OneEuroOptions = { ...CONTROL_GAINS.depthFilter };
 
 export const DEFAULT_HAND_MAPPER: HandMapperOptions = {
   filter: [IMAGE_AXIS, IMAGE_AXIS, DEPTH_AXIS],
@@ -77,7 +85,9 @@ export class HandMapper {
       this.lost = false;
     }
     this.seenStreak++;
-    const palm = this.filter.filter(palmFromLandmarks(hand.landmarks, aspect), tMs / 1000);
+    const measured = palmFromLandmarks(hand.landmarks, aspect);
+    if (this.options.mirrorX) measured[0] = 1 - measured[0];
+    const palm = this.filter.filter(measured, tMs / 1000);
     const ratio = pinchRatio(hand.landmarks, aspect);
     this.lastRatio = ratio;
     const pinch = this.latch.update(ratio) ? 1 : 0;

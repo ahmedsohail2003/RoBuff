@@ -1,12 +1,14 @@
 import type { HandState } from '../input/handState';
 import type { Vec3 } from '../sim/simulation';
+import { CONTROL_GAINS } from './gains';
 import { ARM_WORKSPACE, clampTarget, type Workspace } from './workspace';
 
 /**
  * Linear map between hand space (image x, y in 0..1 with y down, depth 0 far .. 1 near
- * the camera) and the gripper target in world metres. The view is mirrored, like a selfie:
- * moving the hand to the right of the image moves the arm toward -x. Raising the hand
- * raises the gripper; bringing it closer to the camera reaches farther out (-y).
+ * the camera) and the gripper target in world metres, before CONTROL_GAINS.hand. The view is
+ * mirrored, like a selfie: moving the hand to the right of the raw image (the user's left)
+ * moves the arm toward -x, which is screen left in the default view (mirrorSign.test.ts).
+ * Raising the hand raises the gripper; bringing it closer to the camera reaches farther out (-y).
  */
 export const HAND_TO_WORLD = {
   xCenter: 0,
@@ -20,15 +22,20 @@ export const HAND_TO_WORLD = {
 /** Below this confidence a hand state is ignored and the arm holds its last target. */
 export const MIN_CONFIDENCE = 0.5;
 
+/** World point for a hand in the middle of the picture at middle depth; the gain scales about it. */
+const MID = { y: HAND_TO_WORLD.yNear - 0.5 * HAND_TO_WORLD.ySpan, z: HAND_TO_WORLD.zLow + 0.5 * HAND_TO_WORLD.zSpan } as const;
+
 export function palmToWorld(palm: Vec3): Vec3 {
   const m = HAND_TO_WORLD;
-  return [m.xCenter + (0.5 - palm[0]) * m.xSpan, m.yNear - palm[2] * m.ySpan, m.zLow + (1 - palm[1]) * m.zSpan];
+  const g = CONTROL_GAINS.hand;
+  return [m.xCenter + (0.5 - palm[0]) * m.xSpan * g, MID.y - (palm[2] - 0.5) * m.ySpan * g, MID.z + (0.5 - palm[1]) * m.zSpan * g];
 }
 
 /** Inverse of palmToWorld, for scripted hands that want to reach a given point. */
 export function worldToPalm(world: Vec3): Vec3 {
   const m = HAND_TO_WORLD;
-  return [0.5 - (world[0] - m.xCenter) / m.xSpan, 1 - (world[2] - m.zLow) / m.zSpan, (m.yNear - world[1]) / m.ySpan];
+  const g = CONTROL_GAINS.hand;
+  return [0.5 - (world[0] - m.xCenter) / (m.xSpan * g), 0.5 - (world[2] - MID.z) / (m.zSpan * g), 0.5 - (world[1] - MID.y) / (m.ySpan * g)];
 }
 
 /**
@@ -56,13 +63,17 @@ export function handToCommand(state: HandState): ArmCommand | null {
   return { target, grip: Math.min(1, Math.max(0, state.pinch)), clamped };
 }
 
-/** The hand-to-arm range in words, for the screen. Numbers come from HAND_TO_WORLD and HAND_WORKSPACE. */
+/** The hand-to-arm range in words, for the screen. Numbers come from palmToWorld and HAND_WORKSPACE. */
 export function handRangeText(): string {
-  const m = HAND_TO_WORLD;
   const cm = (metres: number) => Math.round(metres * 100);
+  const low = palmToWorld([0.5, 1, 0.5])[2];
+  const high = palmToWorld([0.5, 0, 0.5])[2];
+  const near = -palmToWorld([0.5, 0.5, 0])[1];
+  const far = -palmToWorld([0.5, 0.5, 1])[1];
+  const side = palmToWorld([0, 0.5, 0.5])[0] - palmToWorld([1, 0.5, 0.5])[0];
   return (
-    `hand range: ${cm(m.xSpan)} cm side to side, ${cm(m.zLow)}-${cm(Math.min(m.zLow + m.zSpan, HAND_WORKSPACE.maxZ))} cm high, ` +
-    `${cm(-m.yNear)}-${cm(-(m.yNear - m.ySpan))} cm out; kept within ${cm(HAND_WORKSPACE.maxReach)} cm of the shoulder ` +
+    `hand range: ${cm(side)} cm side to side, ${cm(Math.max(low, HAND_WORKSPACE.minZ))}-${cm(Math.min(high, HAND_WORKSPACE.maxZ))} cm high, ` +
+    `${cm(near)}-${cm(far)} cm out; kept within ${cm(HAND_WORKSPACE.maxReach)} cm of the shoulder ` +
     `(arm reach ${cm(ARM_WORKSPACE.maxReach)} cm)`
   );
 }

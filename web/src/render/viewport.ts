@@ -2,7 +2,9 @@ import type { MjModel } from '@mujoco/mujoco';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Mujoco } from '../sim/mujocoRuntime';
+import { DEFAULT_VIEW } from './defaultView';
 import { buildBodyGroups } from './modelMeshes';
+
 
 /** Three.js scene in MuJoCo's own coordinates: metres, with z up. */
 export class Viewport {
@@ -12,6 +14,7 @@ export class Viewport {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly controls: OrbitControls;
   private readonly bodies: THREE.Group[];
+  private orbitButton: 'left' | 'right' = 'left';
 
   constructor(container: HTMLElement, mujoco: Mujoco, model: MjModel) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -20,11 +23,11 @@ export class Viewport {
     container.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(0xe8eaee);
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.01, 20);
+    this.camera = new THREE.PerspectiveCamera(DEFAULT_VIEW.fovDeg, 1, 0.01, 20);
     this.camera.up.set(0, 0, 1);
-    this.camera.position.set(0.42, -0.62, 0.36);
+    this.camera.position.set(...DEFAULT_VIEW.position);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, -0.12, 0.1);
+    this.controls.target.set(...DEFAULT_VIEW.target);
     this.controls.enableDamping = true;
     this.controls.update();
 
@@ -45,6 +48,23 @@ export class Viewport {
     });
   }
 
+  /**
+   * Which mouse button orbits the camera. Mouse mode uses the right one, so a left click on
+   * the view can open and close the jaw; middle drag pans there. Other modes keep the default.
+   */
+  setOrbitButton(button: 'left' | 'right'): void {
+    if (button === this.orbitButton) return;
+    this.orbitButton = button;
+    this.controls.mouseButtons =
+      button === 'right'
+        ? { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }
+        : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  }
+
+  get orbitsWith(): 'left' | 'right' {
+    return this.orbitButton;
+  }
+
   /** The three.js group drawn at one MuJoCo body's pose, so another module can swap what it shows. */
   bodyGroup(id: number): THREE.Group | undefined {
     return this.bodies[id];
@@ -55,14 +75,16 @@ export class Viewport {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /** Name of the GPU or software rasterizer, and what the last frame drew. */
-  stats(): { gpu: string; drawCalls: number; triangles: number } {
+  /** Name of the GPU or software rasterizer, what the last frame drew, and where the camera is. */
+  stats(): { gpu: string; drawCalls: number; triangles: number; camera: [number, number, number]; orbitsWith: 'left' | 'right' } {
     const gl = this.renderer.getContext();
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
     return {
       gpu: String(gl.getParameter(debugInfo ? debugInfo.UNMASKED_RENDERER_WEBGL : gl.RENDERER)),
       drawCalls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
+      camera: [this.camera.position.x, this.camera.position.y, this.camera.position.z],
+      orbitsWith: this.orbitButton,
     };
   }
 

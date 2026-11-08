@@ -39,8 +39,12 @@ export class HandOverlay {
     g.save();
     g.fillStyle = '#20242b';
     g.fillRect(0, 0, WIDTH, HEIGHT);
-    g.translate(WIDTH, 0);
-    g.scale(-1, 1);
+    // Selfie view: the raw camera picture and its landmarks are mirrored together, so the
+    // dots stay on the hand. A camera that mirrors its own picture (?flip=1) is drawn as is.
+    if (video?.dataset.mirrored !== '1') {
+      g.translate(WIDTH, 0);
+      g.scale(-1, 1);
+    }
     if (video && video.readyState >= 2) g.drawImage(video, 0, 0, WIDTH, HEIGHT);
     if (hand?.landmarks) this.drawHand(hand.landmarks, hand.pinch >= 0.5);
     g.restore();

@@ -144,11 +144,13 @@ test('arm renders and physics runs in the browser', async ({ page }) => {
   console.log(`S1_JAW ${JSON.stringify({ openGap, closedGap, changedPixels: difference.changedFromReference })}`);
   expect(difference.changedFromReference).toBeGreaterThan(200);
 
-  // Dragging orbits the camera. The arm is still by now, so the whole change comes from the view.
+  // Dragging orbits the camera (right drag in mouse mode, where a left click works the jaw).
+  // The arm is still by now, so the whole change comes from the view.
+  const button = await page.evaluate(() => (window.__sim!.renderStats() as unknown as { orbitsWith?: 'left' | 'right' }).orbitsWith ?? 'left');
   await page.mouse.move(640, 360);
-  await page.mouse.down();
+  await page.mouse.down({ button });
   await page.mouse.move(800, 360, { steps: 8 });
-  await page.mouse.up();
+  await page.mouse.up({ button });
   await page.waitForTimeout(500);
   const orbitPng = await page.locator('#viewport canvas').screenshot();
   const orbit = await analyzePng(page, orbitPng, closedPng);

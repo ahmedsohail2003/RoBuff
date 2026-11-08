@@ -1,4 +1,5 @@
 import type { Vec3 } from '../sim/simulation';
+import { CONTROL_GAINS } from './gains';
 
 export interface SmootherOptions {
   /** First-order time constant: about 63% of a step is covered in this time, in seconds. */
@@ -7,7 +8,8 @@ export interface SmootherOptions {
   maxSpeed: number;
 }
 
-export const DEFAULT_SMOOTHER: SmootherOptions = { timeConstantS: 0.12, maxSpeed: 0.25 };
+/** The time constant is tuned in control/gains.ts (was 0.12 s). */
+export const DEFAULT_SMOOTHER: SmootherOptions = { timeConstantS: CONTROL_GAINS.smootherTimeConstantS, maxSpeed: 0.25 };
 
 /** Moves a point toward a goal with a first-order lag and a speed limit. */
 export class TargetSmoother {
