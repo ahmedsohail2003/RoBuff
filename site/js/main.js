@@ -21,7 +21,14 @@ function safe(name, fn) {
 }
 
 safe('space3d', () => import('./space3d.js').then((m) => m.mountSpace3D()));
-safe('spacebg', () => import('./spacebg.js').then((m) => m.mountSpaceBg()));
+safe('lunarstrip', () => import('./lunarstrip.js').then((m) => {
+  const c = document.getElementById('lunar-strip');
+  if (c) m.mountLunarStrip(c);
+}));
+safe('inkbody', () => import('./inkbody.js').then((m) => {
+  const c = document.getElementById('inkbody');
+  if (c) m.mountInkBody(c);
+}));
 safe('header', mountHeader);
 safe('reveals', mountReveals);
 safe('counters', mountCounters);

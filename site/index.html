@@ -21,7 +21,6 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <canvas id="space-bg" aria-hidden="true"></canvas>
   <a class="skip" href="#main">Skip to content</a>
 
   <!-- 1. Header -->
@@ -271,6 +270,7 @@
         <h2 class="h2 center reveal" id="grid-title">Objects I asked for, and what happened.<br><span class="grey">Every refusal shows the numbers behind it.</span></h2>
         <p class="lede center reveal grid-intro">A generated object is only useful if the arm can hold it. So the app checks every request first. Then it places the object and runs a simulated lift test. If the lift fails, the object is removed. I tested seven requests in the browser. Five were lifted, one of them after being rebuilt as a smaller model. The checks refused the other two before they were placed.</p>
         <div class="frame reveal">
+          <canvas class="inkbody" id="inkbody" aria-hidden="true"></canvas>
           <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
           <div class="frame-head"><span class="tag">Requests tested in the browser · 7</span><span class="tag live">Simulated arm · Earth gravity</span></div>
           <div class="tiles" id="tiles" role="group" aria-label="Requests tested in the browser"></div>
@@ -386,6 +386,9 @@
       </div>
     </section>
 
+    <!-- Cratered ground in ink dots, with Earth above the horizon and the 1.28 s signal (js/lunarstrip.js) -->
+    <div class="lunar-strip" aria-hidden="true"><canvas id="lunar-strip" aria-hidden="true"></canvas></div>
+
     <!-- 9. Final CTA -->
     <section class="wrap cta-wrap" id="demo" aria-labelledby="cta-title">
       <div class="cta grid-dark reveal">
@@ -431,7 +434,7 @@
       <div class="credits" id="credits">
         <p>I wrote every line of app code during UB Hacking 2026. The first commit is at 1:43 PM EST on November 7. Hacking opened at 1:30 PM.</p>
         <p>My earlier related projects are the WorkCell series, EmberHacks "The cell", HandSignal and FleetLine. No code from them is reused here. While planning, I read their repositories for facts only, such as arm limits and package names. I copied nothing. What carries over is my experience, the same public arm model and the same hand-tracking library.</p>
-        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Page background: three.js (MIT), with a procedurally drawn Moon and starfield, illustrative only. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
+        <p>Arm model: MuJoCo Menagerie SO-ARM100 (<code>trs_so_arm100</code>, Apache-2.0), from The Robot Studio's SO-ARM100. Physics: MuJoCo. Hand tracking: Google MediaPipe hand landmarker. Rendering: three.js. Page drawings: the Moon, the planets, the stars, the cratered ground and the asteroid are dots drawn in code, with three.js (MIT) in the dark bands. They are illustrative, not maps or real shapes. Gravity and distance data: NASA NSSDC fact sheets and JPL's small-body database. Predictive-display idea: MIT (Sheridan 1984) and JPL (Bejczy, Kim and Venema 1990), flown on DLR's ROTEX in 1993. Delay study: Louca et al. 2024, University of Bristol, ACM Transactions on Human-Robot Interaction, <a href="https://doi.org/10.1145/3651993">doi:10.1145/3651993</a>. Page layout inspired by ZELT (zelt-nu.vercel.app).</p>
         <p>I planned, coded and tested this with Claude Code, Anthropic's AI coding assistant. I directed and reviewed the work. Inside the app, the MediaPipe hand landmarker runs in the browser, and Gemini 3.8 Flash reads typed object requests when a key is set on the key server.</p>
       </div>
     </div>

@@ -750,50 +750,28 @@ input[type='range']::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .hero canvas.space3d, .cta canvas.space3d {
   position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none;
 }
-/* Faint star accents on the light sections: tiny low-alpha dots, decorative only (no text contrast change). */
-#loop, #timeline, #real {
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(11, 12, 14, 0.16) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 78% 9%, rgba(11, 12, 14, 0.12) 0 1.2px, transparent 2px),
-    radial-gradient(circle at 46% 64%, rgba(11, 12, 14, 0.10) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 91% 72%, rgba(11, 12, 14, 0.14) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 27% 88%, rgba(11, 12, 14, 0.10) 0 1.4px, transparent 2.2px),
-    radial-gradient(circle at 63% 33%, rgba(11, 12, 14, 0.08) 0 1px, transparent 1.6px);
-  background-size: 340px 300px;
-}
 /* === end space-theme === */
 
-/* === moon-readability === the calculator glass sits over the three.js Moon; a darker fill keeps its text readable */
-.hero .glass { background: rgba(11, 12, 14, 0.72); }
+/* === moon-readability === the calculator glass sits over the dot Moon: a dark fill keeps its text readable, a lighter blur lets the Moon glow through */
+.hero .glass { background: rgba(11, 12, 14, 0.6); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 
-/* === space-edges === a fixed three.js deep-space backdrop (js/spacebg.js) behind the whole page. The light
-   sections become rounded light panels floating in it, so the left and right edges of the window show dark
-   space with stars, asteroids, planets and a comet. Without WebGL the edges are plain dark. */
-body { background: #05060a; }
-#space-bg { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; z-index: -1; pointer-events: none; }
-/* every light section (anything in main except the dark hero, the dark step cards and the dark CTA) */
-:where(main > section:not(.hero, .steps, .cta-wrap)), .site-footer {
-  background-color: var(--canvas);
-  width: min(1240px, calc(100% - 2 * clamp(24px, 6vw, 120px)));
-  margin: 12px auto;
-  border-radius: 32px;
+/* === ink-pieces === dot drawings in ink on the light sections (js/inkbody.js, js/lunarstrip.js). Decorative,
+   never under body text, hidden where there is no room. */
+/* the ink asteroid sits in the empty margin left of the object frame, its top ticks level with the frame's corner marks */
+.frame .inkbody {
+  --ink-w: clamp(160px, calc((100vw - 760px) / 2 - 84px), 240px);
+  position: absolute; top: -4px; right: calc(100% + 44px);
+  width: var(--ink-w); height: calc(var(--ink-w) + 26px);
+  pointer-events: none;
 }
-:where(main > section:not(.hero, .steps, .cta-wrap)).border-top, .site-footer { border-top: 0; }
-.site-footer { margin-bottom: 12px; }
-/* the three step cards float in space: light heading text on the dark backdrop */
-.steps .steps-head, .steps .steps-head .h2 { color: #fff; }
-.steps .steps-head .grey { color: var(--on-dark-2); }
-.steps .steps-head p { color: var(--on-dark); }
-.scard { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1); }
-.cta { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1); }
-@media (max-width: 900px) {
-  :where(main > section:not(.hero, .steps, .cta-wrap)), .site-footer {
-    width: calc(100% - 20px);
-    margin: 8px auto;
-    border-radius: 20px;
-  }
-}
-/* === end space-edges === */
+@media (max-width: 1239px) { .frame .inkbody { display: none; } }
+/* the cratered ground strip: full bleed between "What is real" and the closing band, its edges melting into the page */
+.lunar-strip { position: relative; height: 176px; margin: -72px 0 -40px; pointer-events: none; }
+.lunar-strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; max-width: none; pointer-events: none; }
+@media (max-width: 900px) { .lunar-strip { height: 112px; margin: -56px 0 -28px; } }
+/* decorative only: hidden in print and in forced-colours mode */
+@media print, (forced-colors: active) { .lunar-strip, .frame .inkbody { display: none; } }
+/* === end ink-pieces === */
 
-/* === dark-heading-legibility === headings over the moving space background keep a soft dark halo */
-#how h2, .cta h2, .hero h1 { text-shadow: 0 2px 28px rgba(5, 6, 10, 0.85), 0 0 2px rgba(5, 6, 10, 0.6); }
+/* === hero-credit-width === the two-line footnote under the hero buttons ends left of the robot's SAMPLE and LIFT labels */
+@media (min-width: 901px) { .hero .credit { max-width: 34rem; } }
