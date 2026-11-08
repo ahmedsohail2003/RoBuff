@@ -16,7 +16,7 @@ const WORDS = [
   [/\b(chip|s-?type|stony)\b/, 'S-type chip'],
   [/\b(asteroid|bennu|rock|sample|c-?type)\b/, 'Bennu-like sample'],
 ];
-const NO_MATCH = 'This page shows the objects tested so far; the app itself takes any request.';
+const NO_MATCH = 'This page only shows the objects I tested. The app itself takes any request.';
 
 function mountDescribe(stopTyping) {
   const panel = document.getElementById('mini-describe');
@@ -36,7 +36,7 @@ function mountDescribe(stopTyping) {
     });
     if (!out) return;
     const o = OBJECTS[i];
-    const test = o.verdict === 'REFUSED' ? `Refused before spawning: ${o.note}` : `Lift test: rose ${o.lift}. ${o.note}`;
+    const test = o.verdict === 'REFUSED' ? `Refused before it was placed. ${o.note}` : `Lift test result: it rose ${o.lift}. ${o.note}`;
     out.innerHTML =
       `<div class="mr-head"><b>${esc(o.name)}</b><span class="mr-v" data-v="${o.verdict.toLowerCase()}">${o.verdict}</span></div>` +
       `<div class="mr-nums mono"><span>${esc(o.width)}${o.asked ? ` (${esc(o.asked)})` : ''}</span><span>${esc(o.mass)}</span></div>` +

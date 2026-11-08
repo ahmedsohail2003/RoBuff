@@ -21,6 +21,7 @@ function safe(name, fn) {
 }
 
 safe('space3d', () => import('./space3d.js').then((m) => m.mountSpace3D()));
+safe('spacebg', () => import('./spacebg.js').then((m) => m.mountSpaceBg()));
 safe('header', mountHeader);
 safe('reveals', mountReveals);
 safe('counters', mountCounters);

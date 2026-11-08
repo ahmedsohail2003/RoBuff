@@ -113,23 +113,23 @@ export function mountCalculator(form) {
     size.setAttribute('aria-valuetext', `${d} millimetres`);
     setFill(size);
     animateMass(mass);
-    oNeed.textContent = `Weight alone needs friction ≥ ${fmtMu(need)}${scale !== 1 ? ' after the rescale' : ''} · has ${m.friction} (${m.basis}); the jaw angle adds more, per shape`;
+    oNeed.textContent = `To hold its weight${scale !== 1 ? ' after resizing' : ''}, the grip needs friction of at least ${fmtMu(need)}. This material has ${m.friction}${m.basis === 'design value' ? ', a set value, not a measurement' : ` (source: ${m.basis})`}. Some shapes need more, because the jaws close at an angle.`;
     if (oShape) oShape.textContent = t.shape;
 
     const by = `${scale.toFixed(2)}×`;
     let text;
-    if (low > high) text = 'No single size fits both the jaw and the height limits, so the app refuses it.';
+    if (low > high) text = 'No size fits both the jaw and the height limit. The app refuses it.';
     else if (finalMass > LIMITS.handMMax) {
       text = scale < 1
-        ? `Over the 200 g hand-flying limit even after the app shrinks it to fit the jaw (${by}, ${fmtMass(finalMass)} g). The app refuses it.`
-        : 'Too heavy: over the 200 g hand-flying limit. The app refuses it.';
-    } else if (sizedForMass) text = `Much bigger than the jaw. The app builds a ${by} model, sized to stay under the 200 g limit; that model weighs ${fmtMass(finalMass)} g.`;
-    else if (scale < 1) text = `Its narrowest side or height is over the hand-flying limit (55 mm at the jaw, 60 mm tall). The app scales it to ${by} and says so; that model weighs ${fmtMass(finalMass)} g.`;
+        ? `Still over the 200 g limit after the app shrinks it to fit the jaw (${by}, ${fmtMass(finalMass)} g). The app refuses it.`
+        : 'Too heavy. It is over the 200 g limit. The app refuses it.';
+    } else if (sizedForMass) text = `Much bigger than the jaw. The app builds a ${by} model that stays under the 200 g limit. That model weighs ${fmtMass(finalMass)} g.`;
+    else if (scale < 1) text = `Its narrowest side is over 55 mm or it is taller than 60 mm. Those are the limits for steering by hand. The app shrinks it to ${by} and tells you. That model weighs ${fmtMass(finalMass)} g.`;
     else if (scale > 1) text = lowW >= lowH
-      ? 'Too small to hold well (15 mm minimum at the jaw). The app scales it up and says by how much.'
-      : 'Too thin for the fingertips to reach. The app scales it up and says by how much.';
-    else if (mat.value === 'ice') text = 'Ice has friction 0.03, so the pad angle decides. The app’s ice shard needed 0.26: refused.';
-    else text = 'Inside the arm’s limits. Next, a simulated lift test: a pass means still 48 mm up after the hold.';
+      ? 'Too small to hold well. The jaw needs at least 15 mm. The app scales it up and tells you by how much.'
+      : 'Too thin for the fingertips to reach. The app scales it up and tells you by how much.';
+    else if (mat.value === 'ice') text = 'Ice has friction 0.03, so the angle of the pads decides. The ice shard in the app needed 0.26, so it was refused.';
+    else text = 'This fits the arm. Next the app runs a simulated lift test. It passes if the object is still 48 mm up after the hold.';
     oVerdict.textContent = text;
     // One note line: the low-gravity warning and the solid-iron reminder share it, so the panel keeps its height.
     const notes = [];

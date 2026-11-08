@@ -88,15 +88,15 @@ function moonTexture() {
   return tex;
 }
 
-function starField(count, spread) {
-  const r = rng(7 + count);
+function starField(count, spread, zNear = 5, zFar = 65) {
+  const r = rng(7 + count + zNear);
   const pos = new Float32Array(count * 3);
   const size = new Float32Array(count);
   const phase = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     pos[i * 3] = (r() - 0.5) * spread;
     pos[i * 3 + 1] = (r() - 0.5) * spread * 0.6;
-    pos[i * 3 + 2] = -5 - r() * 60;
+    pos[i * 3 + 2] = -zNear - r() * (zFar - zNear);
     size[i] = 0.6 + Math.pow(r(), 6) * 2.6;
     phase[i] = r() * Math.PI * 2;
   }
@@ -141,9 +141,17 @@ function mountScene(canvas, { moon, stars }) {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
   camera.position.set(0, 0, 10);
 
-  const field = starField(stars, 90);
-  field.material.uniforms.uPx.value = dpr;
-  scene.add(field);
+  // three depth layers; on pointer, touch and scroll the near layer shifts most (parallax)
+  const layers = [
+    { pts: starField(Math.round(stars * 0.55), 110, 40, 65), k: 0.35 },
+    { pts: starField(Math.round(stars * 0.3), 90, 18, 40), k: 0.9 },
+    { pts: starField(Math.round(stars * 0.15), 70, 5, 18), k: 1.8 },
+  ];
+  layers.forEach((l) => {
+    l.pts.material.uniforms.uPx.value = dpr;
+    scene.add(l.pts);
+  });
+  const moonBase = new THREE.Vector3();
 
   let moonMesh = null;
   if (moon) {
@@ -168,7 +176,8 @@ function mountScene(canvas, { moon, stars }) {
       // keep the Moon partly off the right edge, whatever the aspect
       const halfW = Math.tan((camera.fov * Math.PI) / 360) * 10 * camera.aspect;
       const narrow = w < 901;
-      moonMesh.position.set(halfW - (narrow ? 0.2 : 0.9), narrow ? 4.6 : 1.6, 0);
+      moonBase.set(halfW - (narrow ? 0.2 : 0.9), narrow ? 4.6 : 1.6, 0);
+      moonMesh.position.copy(moonBase);
       // on phones the hero is tall and narrow: a smaller Moon tucked in the top corner keeps the copy on black
       moonMesh.scale.setScalar(narrow ? 0.38 : 1);
     }
@@ -177,6 +186,8 @@ function mountScene(canvas, { moon, stars }) {
   new ResizeObserver(resize).observe(host);
 
   let visible = true;
+  let ex = 0;
+  let ey = 0;
   let raf = 0;
   let last = performance.now();
   let t = 0;
@@ -185,10 +196,22 @@ function mountScene(canvas, { moon, stars }) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     t += dt;
-    field.material.uniforms.uTime.value = t;
-    field.rotation.z = t * 0.004;
-    field.position.x = Math.sin(t * 0.03) * 0.6;
-    if (moonMesh) moonMesh.rotation.y = 0.6 + t * 0.03;
+    ex += (pointer.x - ex) * Math.min(1, dt * 3);
+    ey += (pointer.y - ey) * Math.min(1, dt * 3);
+    // scroll drift: how far the band has moved through the window, about -1..1 while it is on screen
+    const rect = host.getBoundingClientRect();
+    const sc = reduce ? 0 : (rect.top + rect.height / 2 - window.innerHeight / 2) / Math.max(1, window.innerHeight);
+    layers.forEach((l) => {
+      l.pts.material.uniforms.uTime.value = t;
+      l.pts.rotation.z = t * 0.004;
+      l.pts.position.x = Math.sin(t * 0.03) * 0.6 - ex * 0.8 * l.k;
+      l.pts.position.y = -ey * 0.5 * l.k + sc * 1.2 * l.k;
+    });
+    camera.rotation.set(ey * 0.025, -ex * 0.035, 0);
+    if (moonMesh) {
+      moonMesh.rotation.y = 0.6 + t * 0.03 + ex * 0.08;
+      moonMesh.position.set(moonBase.x + ex * 0.35, moonBase.y + ey * 0.25 + sc * 0.6, moonBase.z);
+    }
     renderer.render(scene, camera);
     if (visible && !reduce) raf = requestAnimationFrame(frame);
   }
@@ -207,8 +230,21 @@ function mountScene(canvas, { moon, stars }) {
   raf = requestAnimationFrame(frame);
 }
 
+// pointer or touch position in -1..1, shared by both scenes; each scene eases toward it every frame
+const pointer = { x: 0, y: 0 };
+function trackPointer() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const set = (x, y) => {
+    pointer.x = (x / window.innerWidth) * 2 - 1;
+    pointer.y = -((y / window.innerHeight) * 2 - 1);
+  };
+  window.addEventListener('pointermove', (e) => set(e.clientX, e.clientY), { passive: true });
+  window.addEventListener('touchmove', (e) => { if (e.touches[0]) set(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+}
+
 export function mountSpace3D() {
   if (!webglOK()) return;
+  trackPointer();
   const hero = document.getElementById('hero-space');
   if (hero) mountScene(hero, { moon: true, stars: 3000 });
   const cta = document.getElementById('cta-space');
