@@ -87,3 +87,10 @@ Every feature in the app, the test that checks it, and the demo-video beat that 
 | Mouse: left click grips, right drag orbits, middle drag pans | built | builder's browser tests |
 | Webcam direction pinned to the default view, `?flip=1` for mirrored cameras | built | builder's sign test on every axis |
 | Delay modes put the 30 mm test rock back automatically | built | builder's browser test |
+
+## Added after the freeze (2026-11-07 23:20 to 2026-11-08 00:29, independently re-checked)
+
+| Feature | Status | Checked by | Shown at |
+| --- | --- | --- | --- |
+| Objects built from 3 to 8 coloured simple parts, one convex collision shape per part, in one MuJoCo body with several shapes; same guardrail and lift test | verified (00:24) | `src/objects/test/assembly.test.ts` and `src/sim/assemblyLift.test.ts` (compiled mass equals receipt mass, ratio 1.000000, for 4 of 4 test objects; AK-47 headless lift ADJUSTED, rose 77.5 mm, held 2.07 s); one final live Gemini run in the progress log, 5 of 5 scaled and lifted | not shown |
+| Talk live: hands-free listening in Chrome, Gemini 3.8 Flash replies (at most 200 characters) spoken in the ElevenLabs voice, actions limited to spawn, gravity, mode, home and none; "stop" handled by the local grammar with no network | verified (00:29) | `src/voice/liveTalk.test.ts`, `server/test/routes.test.mjs` (`/api/chat` route), `e2e/live-talk.spec.ts`; one live run with a fake microphone in the progress log (reply 2850 ms, first audio 530 ms, 0 chat calls for "stop") | not shown |
