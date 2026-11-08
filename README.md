@@ -1,14 +1,38 @@
 # RoBuff
 
-Pinch now, grip 2.56 seconds later. An entry for UB Hacking 2026 by Ahmed Sohail Butt (solo).
-
-**SIMULATION.** Everything you see is a physics simulation running in your browser. There is no real robot, and the screen says so at all times.
+RoBuff is a browser app, built solo by Ahmed Sohail Butt for UB Hacking 2026, in which your bare hand, seen by a laptop webcam, drives a simulated robot arm that must pick up rocks by friction alone, under Earth, Moon or asteroid gravity. In Moon mode every command and every picture travels through the Earth-Moon light delay, 2.56 s round trip, while a see-through "ghost" arm shows at once what your hand is asking for and an error meter shows where that prediction is wrong. **SIMULATION:** there is no real robot; the arm, the rocks and the delay are all simulated in your browser, and the screen says so at all times. The arm, the delay and ghost, the object checks, the gravity and the voice are built and pass their automated tests, but whether the ghost helps a person grab under delay is not yet measured (0 logged trials).
 
 ## What it does
 
-RoBuff is a browser testbed where your bare hand, seen by a laptop webcam, drives a physics-simulated SO-ARM100 robot arm that picks things up by friction alone. You can ask for an object, such as an asteroid sample or a satellite part, and a guardrail checks it against the arm's measured limits and a simulated lift test before it appears; a gravity menu switches the scene between Earth, Mars, the Moon, the asteroid Bennu and orbit. In Moon mode your commands travel through the true Earth-Moon light delay (1.28 s each way, 2.56 s round trip), and a translucent predictive "ghost" arm answers your hand at once; the ghost does not know the rock's true mass, so the two can disagree and an error meter shows by how much.
+### The problem
 
-How each part works, with its measured numbers: [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+When a person on Earth drives a robot arm on or near the Moon, each command takes 1.28 s to arrive and the picture of what happened takes 1.28 s to come back. Close the gripper and you see the result 2.56 s later. Operators then fall back on "move and wait": move a little, stop, and wait for the picture to catch up, which Ferrell saw in his 1965 MIT study and Louca et al. at the University of Bristol saw again in 2024, when a robot arm run at delays up to 2.6 s did worse on every measure the authors recorded ([ACM Transactions on Human-Robot Interaction](https://doi.org/10.1145/3651993), abstract retrieved 2026-11-07). A known remedy, from 1980s NASA JPL and MIT work, is a predictive display: draw the arm where it is about to be, before the delayed picture arrives. Trying one normally takes a robot and a lab. I wanted to know whether it could be tried with only a laptop and a webcam.
+
+### What I built
+
+A late grip only matters if it can miss, so the arm had to really grip rather than snap the rock to the jaw. It runs in MuJoCo, a physics engine made for robotics that simulates contact and friction, compiled to WebAssembly, a format that lets compiled code run inside a web page, so the whole simulation runs in the browser with nothing to install. The arm is the SO-ARM100, a low-cost open-source desktop robot arm, loaded from MuJoCo Menagerie, Google DeepMind's collection of ready-made robot models, so its sizes, motors and contact settings are the published ones rather than values I picked. Nothing glues the rock to the jaw: it rises only if friction holds it.
+
+Your hand drives it through MediaPipe, Google's hand-tracking library, which finds 21 points on your hand in each webcam frame on your own machine, so no video leaves the laptop. The app turns your palm position into a target for the gripper and the gap between thumb and index finger into the grip. Inverse kinematics, the calculation that finds the joint angles that put the gripper on a target point, then moves the arm. three.js, a 3D graphics library for the web, draws the scene.
+
+For the delay, Moon mode holds each command for 1.28 s before the simulated arm receives it, and holds the picture of that arm for another 1.28 s. The ghost is a second MuJoCo simulation of the same arm that gets your commands at once and is drawn see-through. A ghost that shared every value with the true arm would always be right, so it is given the wrong rock: 43.2 g with friction 0.8, where the true rock is 62.1 g with friction 0.6. The error meter shows how far apart the two are.
+
+You can also type or say a request such as "a comet ice shard". Gemini 3.8 Flash, Google's large language model, turns the sentence into a spec with fixed fields (kind, size, material), because requests are free text that no keyword list covers. Gemini only proposes. A guardrail written in plain code checks the spec against limits measured on the simulated arm (jaw 10 to 70 mm, at most 0.30 kg), and a lift test runs a hidden pick on a second copy of the simulation; only an object that rose at least 48 mm appears. Without a Gemini key, an offline keyword parser answers instead, labelled on screen. A gravity menu sets Earth, Mars, Moon, the asteroid Bennu or orbit, with values from NASA and JPL data. Hold V to speak commands; replies are spoken by ElevenLabs, a text-to-speech service, used because it starts speaking quickly enough for a live console, or by the browser's own voice when no key is set.
+
+To test it, Vitest, a test runner for JavaScript and TypeScript, runs the unit tests in Node against the same MuJoCo WebAssembly build the browser uses. Playwright, a tool that drives a real Chrome browser from a script, runs the browser tests with a scripted hand and a fake camera made from that hand.
+
+### What the tests showed
+
+- Unit tests: 201 of 201 passed in the last independent check (31 files, 2026-11-07 20:03 EST); the builder's own later run, after the end-of-build control changes, passed 226 in 36 files, not yet re-checked.
+- Grip: a scripted pick lifted the 20 g test cube 78.2 mm, held it 5.65 s, and the cube fell 0.25 s after the jaw opened. Five of 5 repeats from the same start passed, which shows the run is deterministic, not that it is robust; across 9 cube positions, 6 of 9 picks passed, and the 3 failures were all 8 to 12 cm off the arm's centre line.
+- Hand tracking: in the fake-camera test MediaPipe found a hand in 123 of 123 frames, at a median of 11 ms per frame on an RTX 4050 laptop GPU. Inverse kinematics put the gripper within 0.09 to 1.85 mm of every reachable test target.
+- Delay and ghost: a command sent at 1.00 s reached the true arm at 2.29 s (1.28 s plus one 10 ms control step). With identical settings the ghost and the true arm stayed within 0.2 mm over a 10 s pick; with the hidden rock mismatch, the rock error reached 1.19 mm during the grasp.
+- Objects: the Bennu-like sample passed (rose 77.3 mm); "an asteroid the size of Texas" was rescaled to a 55 mm, 144 g model that rose 76.0 mm; "solid iron, 60 mm" was refused at 562 g; the comet ice shard was refused because it needs friction 0.26 and ice has 0.03.
+- Gravity: a cube dropped 0.10 m touched the floor after 0.354 s on the Moon (theory 0.351 s) and 0.144 s on Earth (theory 0.143 s).
+- Live services on 2026-11-07: Gemini returned 5 of 5 valid specs, median 3.9 s end to end; ElevenLabs returned audio for 5 of 5 lines, first audio median 176 ms.
+- Stop gesture: both hands open latched the stop at 0.40 s, and a 601-frame pinch-and-carry replay never set it off.
+- Not measured yet: whether the ghost makes a person faster (0 logged trials), and how the control feels with a real hand on a webcam.
+
+How each part works, with all its measured numbers: [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
 
 ## Try it
 
@@ -20,7 +44,7 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:5173/?input=webcam` and allow the camera. Without a camera, open `http://localhost:5173/?input=mouse`. The camera only works on `localhost` or over HTTPS. The first hand detection can take about 10 s while the model warms up.
+`npm run dev` starts Vite, a development server that builds and serves the app. Then open `http://localhost:5173/?input=webcam` and allow the camera. Without a camera, open `http://localhost:5173/?input=mouse`. The camera only works on `localhost` or over HTTPS. The first hand detection can take about 10 s while the model warms up.
 
 Tests, from `web/`:
 
@@ -72,7 +96,7 @@ No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.
 
 ## Results
 
-Not run. The ghost test is one operator's logged grabs with the ghost on and off at 2.56 s delay, with its pass rule written down before any data. It has not run yet: ghost benefit: not yet measured (0 logged trials). The numbers that are measured so far are engineering checks (tracking time, pick height, lift tests, gravity drops), listed in [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+Ghost benefit: not yet measured (0 logged trials). The ghost test is one operator's logged grabs with the ghost on and off at 2.56 s delay, with its pass rule written down before any data; it has not been run. Everything measured so far is an engineering check of the parts (tracking time, pick height, lift tests, gravity drops, live service checks), summarised under "What the tests showed" above and listed in full in [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
 
 ## Limits
 
@@ -84,7 +108,7 @@ No camera frames leave the laptop: hand tracking runs on device; Gemini receives
 
 ## Who this is for
 
-Designed for students and science-centre visitors who want to feel why space robotics is hard, using only a laptop webcam. Nobody has used it yet, and no users are implied. Light takes 2.56 s to go from the Earth to the Moon and back (mean distance 384,400 km, [NASA NSSDC Moon fact sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html), retrieved 2026-11-07). A 2024 University of Bristol study of a robot arm run at delays up to 2.6 s found that performance got worse on every measure the authors recorded ([Louca et al., ACM Transactions on Human-Robot Interaction](https://doi.org/10.1145/3651993), abstract retrieved 2026-11-07).
+Designed for students and science-centre visitors who want to feel why space robotics is hard, using only a laptop webcam. Nobody has used it yet, and no users are implied. Light takes 2.56 s to go from the Earth to the Moon and back (mean distance 384,400 km, [NASA NSSDC Moon fact sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html), retrieved 2026-11-07).
 
 Also for anyone who wants to try a delay-display experiment without a robot or a lab. Predictive displays have cut completion times for free motion at 1 to 3 s delays ([Sheridan 1984, NTRS 19850006202](https://ntrs.nasa.gov/citations/19850006202); [Richter et al. 2019, IEEE ICRA](https://arxiv.org/abs/1809.08627), 49.2 s with the display against 60.6 s without at 1 s; both retrieved 2026-11-07), and DLR flew one on the ROTEX arm in 1993 at a 5 to 7 s delay ([DLR](https://www.dlr.de/en/rm/research/robotic-systems/history/rotex-1988-1993), retrieved 2026-11-07). Those studies are small (most had 4 to 20 people) and each needed a robot. RoBuff is not new in idea: predictive displays date from the 1980s JPL and MIT work. It is uncommon at hackathons: in a keyword scan of 755 saved UB Hacking entries we found none that put an arm in a physics simulation, checked generated objects for pickup, or modelled light delay (full text for Fall 2025, titles and taglines for older editions, so the scan can miss entries). Hand tracking is common there, and RoBuff does not claim it as new.
 
