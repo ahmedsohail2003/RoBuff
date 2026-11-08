@@ -89,8 +89,9 @@ No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.
 | Earth-Moon delay and ghost arm | Simulated | Built and checked in unit and browser tests. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
 | Trial logger and results | Built, not yet run | The logger and the scoring scripts work on synthetic test data, which is never counted. No real trials have been logged. |
 | Voice | Real when keys are set; offline otherwise | Hold-to-talk with the browser's speech recognition and an offline command grammar. Spoken replies use ElevenLabs (`eleven_flash_v2_5`) through the local key server when its key is set: in the live check on 2026-11-07, 5 of 5 lines returned audio with no errors, first audio median 176 ms. Without a key the browser's own voice speaks, labelled offline. Captions always. |
-| Stop gesture | Built | Both hands open, held 0.4 s, freezes the arm (needs `?hands=2`); the Space key always works. Tested on replayed and synthetic hands, not yet on a real hand. |
-| Hand control feel | Untested | Tested with a scripted hand and a fake camera, not yet with a real hand on a webcam. |
+| Stop gesture | Built | Both hands open, held 0.4 s, freezes the arm (needs `?hands=2`); the Space key always works. Tested on replayed and synthetic hands; a real-hand try has not been logged. |
+| Hand control feel | Tried, not measured | The author steered the arm with his own hand on a laptop webcam and it worked; the try was not timed and no numbers were logged. Every measured number comes from the scripted, photo and fake-camera tests. |
+| Scene look | Simulated, drawn by our code | A procedural lunar floor, a small procedural Earth and an original RoBuff mission patch on the arm (no agency marks). Builder-tested only: about 236 frames per second headless with the new scene. |
 | Hosting | Local only | Runs on your own machine from `npm run dev`. Not deployed to Vultr or any other server. |
 | Demo video | The author's own recording | The submission video is the author's own recording of the app. The repo's `web/e2e/demo-path.spec.ts` recording is an automated browser test with scripted input, not the submission video. |
 
