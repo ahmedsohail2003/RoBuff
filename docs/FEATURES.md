@@ -59,7 +59,7 @@ Every feature in the app, the test that checks it, and the demo-video beat that 
 | --- | --- | --- | --- |
 | Hold V to talk, offline command grammar (stop, home, gravity, delay, ghost) | verified | `src/voice/grammar.test.ts`, `e2e/s7-voice-offline.spec.ts` | 1:20-1:50 (if the request is spoken) |
 | Spoken receipts with captions, browser voice, labelled badges | verified | `e2e/s7-voice-offline.spec.ts` | 1:20-1:50 |
-| ElevenLabs console voice | built, not live (no key on this machine) | `server/test/routes.test.mjs` (no-key path only) | not shown |
+| ElevenLabs console voice | built and live with a key (live check 5 of 5 lines, first audio median 176 ms) | `server/test/routes.test.mjs` (no-key path) and the live check in the progress log | spoken lines in the demo |
 | Key server: health, spec and speech routes, origin check, 30 requests a minute | verified | `server/test/*.mjs` | not shown |
 | Space stop latch: every joint and the jaw hold; only Resume clears it | verified | `src/safety/latch.test.ts`, `e2e/s3-hand.spec.ts` (e), `e2e/s8-stop.spec.ts` | not shown |
 | Two-open-hands stop gesture (`?hands=2`), experimental | verified on replayed synthetic hands; not yet tried on a real hand | `src/safety/stopGesture.test.ts`, `e2e/s8-stop.spec.ts` | not shown |

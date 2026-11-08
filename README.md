@@ -64,7 +64,7 @@ No API key is needed to run it. With a Gemini key in `web/.env` (names in `web/.
 | Mouse and synthetic hand | Simulated input | Labelled on screen; never counted in results. |
 | Earth-Moon delay and ghost arm | Simulated | Built and checked in unit and browser tests. The delay is a constant, modelled 1.28 s each way; the ghost and the true arm are two MuJoCo simulations of the same arm. |
 | Trial logger and results | Built, not yet run | The logger and the scoring scripts work on synthetic test data, which is never counted. No real trials have been logged. |
-| Voice | Offline | Hold-to-talk with the browser's speech recognition and an offline command grammar; spoken replies use the browser's voice, with captions. ElevenLabs is not connected (no key). |
+| Voice | Real when keys are set; offline otherwise | Hold-to-talk with the browser's speech recognition and an offline command grammar. Spoken replies use ElevenLabs (`eleven_flash_v2_5`) through the local key server when its key is set: in the live check on 2026-11-07, 5 of 5 lines returned audio with no errors, first audio median 176 ms. Without a key the browser's own voice speaks, labelled offline. Captions always. |
 | Stop gesture | Built | Both hands open, held 0.4 s, freezes the arm (needs `?hands=2`); the Space key always works. Tested on replayed and synthetic hands, not yet on a real hand. |
 | Hand control feel | Untested | Tested with a scripted hand and a fake camera, not yet with a real hand on a webcam. |
 | Hosting | Local only | Runs on your own machine from `npm run dev`. Not deployed to Vultr or any other server. |
@@ -78,7 +78,7 @@ Not run. The ghost test is one operator's logged grabs with the ghost on and off
 
 The ghost test will have one operator, who built the system and knows the task, so learning and expectation can favour either condition and the result will not generalise to other people. The ghost and the true arm will run the same physics engine and arm model, so the only prediction error will be the mass and friction mismatch we chose, which is far smaller and simpler than the calibration, model and contact errors that real predictive displays face. There is no hardware, network jitter or video compression: the delay will be a constant 2.56 s, so the numbers describe this interface in simulation and nothing about any flight system.
 
-Other limits, all measured: at Bennu gravity a 5 cm/s sideways push lifted the resting cube 46.9 mm, which is a solver artefact, not real physics; scripted picks failed at 3 of 9 cube positions, all 8 to 12 cm off the arm's centre line; the pinch thresholds come from a sample photo, not a real pinch.
+Other limits, all measured: at Bennu gravity a 5 cm/s sideways push lifted the resting cube 46.9 mm, which is a solver artefact, not real physics; scripted picks failed at 3 of 9 cube positions, all 8 to 12 cm off the arm's centre line; the pinch thresholds were set from test images and the scripted hand, not yet tuned on a real operator's pinch.
 
 No camera frames leave the laptop: hand tracking runs on device; Gemini receives only the typed or transcribed request text, and only when a key is configured.
 
@@ -122,7 +122,7 @@ What they share with Robuff: the same public arm model (WorkCell and EmberHacks)
 
 - Anthropic's Claude, through Claude Code (the Fable and Opus models), planned the build, summarised research, and wrote and tested code and drafts under Ahmed's direction and review.
 - Gemini 3.8 Flash turns spoken or typed object requests into specs inside the product, through the local key server, when a key is configured. Its live check passed on 2026-11-07 (5 of 5 valid specs, median 3.9 s).
-- ElevenLabs was planned to speak the console's lines. It is not connected (no key); the browser's own voice speaks them, labelled offline.
+- ElevenLabs speaks the console's lines when its key is set on the machine running the key server (live check: 5 of 5 lines, first audio median 176 ms). It is not deployed anywhere, so a judge's own copy needs its own key or uses the labelled browser voice.
 - The MediaPipe hand landmarker reads your hand, on device.
 
 ### Simulated and mocked data
