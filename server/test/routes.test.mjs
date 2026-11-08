@@ -117,3 +117,22 @@ test('tts: over 160 characters is refused; a fixed line is fetched once, then se
   assert.equal((await second.arrayBuffer()).byteLength, 4);
   assert.equal(upstreamCalls, 1);
 });
+
+test('mode object: the object panel always gets a spawn spec, even when Gemini answers none; commands keep none', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push(JSON.parse(init.body));
+    const reply = { intent: 'none', gravity: 'none', kind: 'box', width_mm: 1900, height_mm: 1450, roughness: 0.1, lumpiness: 0.2, seed: 4, material: 'aluminium', color: '#e82127', why: 'Approximated: a Tesla, as a car-shaped box.' };
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] } }] }), { status: 200 });
+  };
+  const { base } = await start({ config: FAKE_KEYS, fetchImpl });
+  const panel = await (await post(base, '/api/spec', { text: 'Tesla', mode: 'object' })).json();
+  assert.equal(panel.intent, 'spawn');
+  assert.equal(panel.spec.kind, 'box');
+  assert.match(panel.spec.why, /^Approximated:/);
+  assert.match(calls[0].systemInstruction.parts[0].text, /object panel/);
+  const command = await (await post(base, '/api/spec', { text: 'Tesla' })).json();
+  assert.equal(command.intent, 'none');
+  assert.equal(command.spec, null);
+  assert.doesNotMatch(calls[1].systemInstruction.parts[0].text, /object panel/);
+});

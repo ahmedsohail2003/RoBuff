@@ -101,7 +101,7 @@ export class ObjectBrain {
   }
 
   /** One Gemini call through the key server. Throws when it fails; the caller falls back. */
-  async ask(text: string): Promise<IntentResult> {
+  async ask(text: string, mode: 'command' | 'object' = 'command'): Promise<IntentResult> {
     const t0 = performance.now();
     const call: BrainCall = { text, ok: false, status: null, latency_ms: 0, intent: null, error: null };
     this.calls.push(call);
@@ -109,7 +109,8 @@ export class ObjectBrain {
       const res = await fetch('/api/spec', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text }),
+        // mode 'object' tells the key server every line is an object to make; commands send no mode.
+        body: JSON.stringify(mode === 'object' ? { text, mode } : { text }),
         signal: AbortSignal.timeout(12_000),
       });
       call.status = res.status;
@@ -142,7 +143,8 @@ export class ObjectBrain {
     const preset = offline(text, 'A preset: its fixed spec, no Gemini call.');
     if (preset.matched.some((m) => m.startsWith('preset:'))) return preset;
     try {
-      const answer = await this.ask(text);
+      // The object panel: every request is an object, so the server always answers with a spec.
+      const answer = await this.ask(text, 'object');
       if (!answer.spec) return offline(text, `Gemini read this as "${answer.intent}", not an object, so the offline mock made the spec.`);
       return { source: 'gemini', spec: answer.spec, matched: [], clamps: answer.clamps, latency_ms: answer.latency_ms, note: null };
     } catch (error) {

@@ -2,7 +2,7 @@
 
 import { MATERIAL_IDS, type MaterialId } from './materials';
 
-export const KINDS = ['asteroid', 'panel', 'dish', 'bus', 'fragment'] as const;
+export const KINDS = ['asteroid', 'panel', 'dish', 'bus', 'fragment', 'box', 'cylinder', 'sphere', 'cone'] as const;
 export type ObjectKind = (typeof KINDS)[number];
 
 export interface ObjectSpec {
@@ -39,7 +39,11 @@ export const OBJECT_SPEC_SCHEMA = {
   type: 'object',
   description: 'A request for one object. The sizes are requests: a validator rescales or refuses them.',
   properties: {
-    kind: { type: 'string', enum: [...KINDS], description: 'Which generator makes the shape.' },
+    kind: {
+      type: 'string',
+      enum: [...KINDS],
+      description: 'Which generator makes the shape. box, cylinder, sphere and cone are for everyday things; asteroid, panel, dish, bus and fragment are for space things.',
+    },
     width_mm: {
       type: 'number',
       minimum: SIZE_RANGE_MM[0],

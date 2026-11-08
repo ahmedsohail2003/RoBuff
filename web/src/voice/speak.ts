@@ -187,12 +187,25 @@ export function receiptLine(receipt: Receipt, spawned: boolean): { text: string;
     const why = refused?.message ?? receipt.steps[receipt.steps.length - 1]?.message ?? 'A check refused it.';
     return { text: `Refused. ${why}`, kind: 'refusal' };
   }
-  const width = receipt.rest?.narrow_width_mm ?? receipt.narrow_width_mm;
-  const grams = receipt.mass_kg !== null ? receipt.mass_kg * 1000 : null;
-  const size = `${width !== null ? `${say(width)} millimetres across` : 'made'}${grams !== null ? `, ${say(grams)} grams` : ''}`;
   if (receipt.verdict === 'ADJUSTED') {
     const change = receipt.steps.find((s) => s.action === 'rescaled' || s.action === 'clamped');
-    return { text: `${change ? `${change.message} ` : ''}Adjusted: ${size}. It lifted in the simulated lift test.`, kind: 'receipt' };
+    return { text: `${change ? `${change.message} ` : ''}Adjusted: ${sizeText(receipt)} It lifted in the simulated lift test.`, kind: 'receipt' };
   }
-  return { text: `Done: ${size}. It lifted in the simulated lift test.`, kind: 'receipt' };
+  return { text: `Done: ${sizeText(receipt)} It lifted in the simulated lift test.`, kind: 'receipt' };
+}
+
+/**
+ * One width, stated once. The guardrail sizes the model by its narrowest width; settling can turn
+ * it, so the width measured at rest may differ. Then the line says plainly it was measured after it
+ * settled, instead of quoting a second width as if it were the planned one.
+ */
+function sizeText(receipt: Receipt): string {
+  const planned = receipt.narrow_width_mm;
+  const settled = receipt.rest?.narrow_width_mm ?? null;
+  const grams = receipt.mass_kg !== null ? `${say(receipt.mass_kg * 1000)} grams` : null;
+  if (settled !== null && planned !== null && say(settled) !== say(planned)) {
+    return `${grams ? `${grams}. ` : ''}After it settled it measured ${say(settled)} millimetres across.`;
+  }
+  const width = settled ?? planned;
+  return `${width !== null ? `${say(width)} millimetres across` : 'made'}${grams ? `, ${grams}` : ''}.`;
 }

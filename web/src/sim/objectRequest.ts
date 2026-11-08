@@ -3,6 +3,7 @@
 // runs, so the panel can tick it. The spec comes from the object brain: Gemini through the
 // key server when it is live, otherwise the offline keyword mock and presets, with no network call.
 
+import { approximationLine } from '../objects/approximation';
 import { proveLift } from '../objects/lift';
 import { validate } from '../objects/guardrail';
 import { objectBrain, type ObjectBrain, type SpecResult } from '../objects/objectBrain';
@@ -104,7 +105,8 @@ export class ObjectRequests {
     };
 
     if (mock.source === 'gemini') {
-      push({ code: 'REQUEST', state: 'ok', text: `Gemini 3.8 Flash wrote the spec in ${say(mock.latency_ms)} ms. ${mock.spec.why}` });
+      const closest = approximationLine(mock.spec);
+      push({ code: 'REQUEST', state: closest ? 'note' : 'ok', text: `Gemini 3.8 Flash wrote the spec in ${say(mock.latency_ms)} ms. ${closest ? `${closest} ` : ''}${mock.spec.why}` });
     } else {
       const matched = mock.matched.length ? mock.matched.join(', ') : 'no keywords, so defaults';
       push({ code: 'REQUEST', state: mock.note ? 'note' : 'ok', text: `${mock.note ? `${mock.note} ` : ''}Offline mock read the request (no Gemini call): ${matched}. ${mock.spec.why}` });

@@ -59,6 +59,10 @@ const KIND_WORDS: [RegExp, ObjectKind, string][] = [
   [/\b(dish|antenna|reflector)\b/, 'dish', 'dish'],
   [/\b(bus|cubesat|satellite|probe)\b/, 'bus', 'bus'],
   [/\b(fragment|debris|shard|chip|piece|shrapnel)\b/, 'fragment', 'fragment'],
+  [/\b(box|cube|block|crate|brick|dice|book|phone)\b/, 'box', 'box'],
+  [/\b(soda can|tin can|a can|cylinder|tube|wheel|puck|mug|cup|bottle|jar|battery)\b/, 'cylinder', 'cylinder'],
+  [/\b(cone|funnel|pyramid)\b/, 'cone', 'cone'],
+  [/\b(ball|sphere|orange|apple|marble|globe|orb)\b/, 'sphere', 'sphere'],
   [/\b(asteroid|rock|boulder|meteorite|bennu|ryugu|itokawa|stone|pebble|sample)\b/, 'asteroid', 'asteroid'],
 ];
 
@@ -76,11 +80,27 @@ const DEFAULT_MATERIAL: Record<ObjectKind, MaterialId> = {
   dish: 'aluminium',
   bus: 'aluminium',
   fragment: 'aluminium',
+  box: 'aluminium',
+  cylinder: 'aluminium',
+  sphere: 'aluminium',
+  cone: 'aluminium',
 };
 
 /** Height as a fraction of width when the text gives only one size. */
-const HEIGHT_RATIO: Record<ObjectKind, number> = { asteroid: 0.82, panel: 0.2, dish: 0.42, bus: 0.9, fragment: 0.75 };
-const DEFAULT_WIDTH_MM: Record<ObjectKind, number> = { asteroid: 40, panel: 50, dish: 48, bus: 42, fragment: 32 };
+const HEIGHT_RATIO: Record<ObjectKind, number> = { asteroid: 0.82, panel: 0.2, dish: 0.42, bus: 0.9, fragment: 0.75, box: 1, cylinder: 1.2, sphere: 1, cone: 1.1 };
+const DEFAULT_WIDTH_MM: Record<ObjectKind, number> = { asteroid: 40, panel: 50, dish: 48, bus: 42, fragment: 32, box: 34, cylinder: 34, sphere: 38, cone: 40 };
+
+/** Plain colour words, so "a green block" is green. */
+const COLOR_WORDS: [RegExp, string, string][] = [
+  [/\b(green|grass)\b/, '#4f9a3a', 'green'],
+  [/\b(red)\b/, '#c8362e', 'red'],
+  [/\b(blue)\b/, '#2f5fb3', 'blue'],
+  [/\b(yellow|tennis)\b/, '#d9e021', 'yellow'],
+  [/\b(orange)\b/, '#f08a24', 'orange'],
+  [/\b(white)\b/, '#f2f2ee', 'white'],
+  [/\b(black)\b/, '#1e1e1e', 'black'],
+  [/\b(brown|wood|wooden|dirt)\b/, '#8a5a32', 'brown'],
+];
 
 const COLORS: Record<MaterialId, string> = {
   c_type_rock: '#3b3734',
@@ -172,6 +192,14 @@ export function specFromText(input: string): MockResult {
   const seedMatch = /\bseed\s*(\d+)\b/.exec(text);
   const seed = seedMatch ? Number(seedMatch[1]) % (SEED_MAX + 1) : hashText(text) % (SEED_MAX + 1);
   const why = `Offline mock, not Gemini: ${matched.length ? `matched ${matched.join(', ')}` : 'no keywords matched, so these are defaults'}.`;
-  const { spec, clamps } = normalizeSpec({ kind, width_mm: width, height_mm: height, roughness, lumpiness, seed, material, color: COLORS[material], why });
+  let color = COLORS[material];
+  for (const [pattern, hex, word] of COLOR_WORDS) {
+    if (pattern.test(text)) {
+      color = hex;
+      matched.push(`color:${word}`);
+      break;
+    }
+  }
+  const { spec, clamps } = normalizeSpec({ kind, width_mm: width, height_mm: height, roughness, lumpiness, seed, material, color, why });
   return { source: 'offline-mock', spec, matched, clamps };
 }

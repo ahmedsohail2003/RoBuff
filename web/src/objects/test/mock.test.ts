@@ -39,7 +39,7 @@ describe('offline mock and spec', () => {
 
   it('schema lists every field as required, with enums and ranges', () => {
     expect(OBJECT_SPEC_SCHEMA.required).toHaveLength(9);
-    expect(OBJECT_SPEC_SCHEMA.properties.kind.enum).toEqual(['asteroid', 'panel', 'dish', 'bus', 'fragment']);
+    expect(OBJECT_SPEC_SCHEMA.properties.kind.enum).toEqual(['asteroid', 'panel', 'dish', 'bus', 'fragment', 'box', 'cylinder', 'sphere', 'cone']);
     expect(OBJECT_SPEC_SCHEMA.properties.material.enum).toEqual(Object.keys(MATERIALS));
     expect(OBJECT_SPEC_SCHEMA.properties.roughness).toMatchObject({ minimum: 0, maximum: 1 });
     expect(JSON.parse(JSON.stringify(OBJECT_SPEC_SCHEMA))).toEqual(OBJECT_SPEC_SCHEMA);
