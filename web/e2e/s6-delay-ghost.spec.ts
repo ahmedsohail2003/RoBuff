@@ -76,6 +76,10 @@ test('Earth-Moon delay: direct pick, Moon with the ghost, lag of each line, erro
 
   // (b) Moon, ghost on, from the panel button; the scene resets.
   await page.evaluate(() => (window.__sim!.speed = 1));
+  // Moon gravity from the menu first, so entering the mode changes no gravity: only the ghost's
+  // registration can update the readout's count.
+  await page.click('[data-gravity="moon"]');
+  await expect(page.getByTestId('gravity-readout')).toContainText('written to 1 simulation (live 1.62)');
   await page.click('[data-delay-mode="moon_ghost_on"]');
   await expect(page.locator('[data-delay-mode="moon_ghost_on"]')).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
   await expect(page.getByTestId('ghost-mismatch')).toContainText("does not know the rock's true mass");
@@ -90,6 +94,11 @@ test('Earth-Moon delay: direct pick, Moon with the ghost, lag of each line, erro
   console.log(`M4_GRAVITY ${JSON.stringify(grav.sims)}`);
   expect(grav.preset.id).toBe('moon');
   expect(grav.sims).toEqual(expect.arrayContaining([{ name: 'live', gravity_m_s2: 1.62 }, { name: 'ghost', gravity_m_s2: 1.62 }]));
+  // The menu's readout counts the ghost too, as soon as it registers.
+  const readout = page.getByTestId('gravity-readout');
+  await expect(readout).toContainText('written to 2 simulations');
+  await expect(readout).toContainText('ghost 1.62');
+  console.log(`M4_GRAVITY_READOUT ${await readout.textContent()}`);
 
   await page.evaluate(() => {
     const w = window as unknown as { __m4: { samples: unknown[]; done: boolean } };
@@ -148,20 +157,33 @@ test('Earth-Moon delay: direct pick, Moon with the ghost, lag of each line, erro
   expect(fpsMedian).toBeGreaterThanOrEqual(45);
   expect(errors.length).toBeGreaterThan(0);
 
-  // (c) One logged trial through the runner (trial 1 is a direct warm-up), and the download.
+  // (c) Logged trials through the runner: trial 1 is a direct warm-up; the order then has three
+  // more warm-ups, a ghost-off practice trial, and trial 6, the first Moon-ghost-on trial.
   await expect(page.getByTestId('trial-title')).toContainText('Trial 1/20: DIRECT');
   await page.evaluate(() => (window.__sim!.speed = 2));
   const row = await page.evaluate(() => window.__sim!.runTrial!(0));
-  const csv = await page.evaluate(() => window.__sim!.trialCsv!());
-  const lines = csv.trim().split('\n');
-  console.log(`M4_TRIAL_CSV\n${csv}`);
   expect(row.success).toBe('1');
-  expect(lines).toHaveLength(2);
-  expect(lines[0]!.split(',')).toHaveLength(33);
-  expect(lines[1]!.split(',')).toHaveLength(33);
   expect(row.operator).toBe('synthetic-hand');
   expect(row.input_source).toBe('synthetic');
   await expect(page.getByTestId('trial-title')).toContainText('Trial 2/20: DIRECT');
+  const rows = [row];
+  while (rows[rows.length - 1]!.condition !== 'ghost_on' && rows.length < 6) rows.push(await page.evaluate(() => window.__sim!.runTrial!(0)));
+  const ghostRow = rows[rows.length - 1]!;
+  const csv = await page.evaluate(() => window.__sim!.trialCsv!());
+  const lines = csv.trim().split('\n');
+  console.log(`M4_TRIAL_CSV\n${csv}`);
+  console.log(`M4_TRIAL_ROWS ${rows.map((r) => `${r.trial_idx}:${r.condition}:success=${r.success}:completion=${r.completion_s}`).join(' ')}`);
+  expect(rows.map((r) => r.condition)).toEqual(['direct', 'direct', 'direct', 'direct', 'ghost_off', 'ghost_on']);
+  expect(ghostRow.success).toBe('1');
+  expect(ghostRow.operator).toBe('synthetic-hand');
+  expect(ghostRow.input_source).toBe('synthetic');
+  // The CSV itself, by column name: the last row is the Moon-ghost-on trial, a success.
+  const header = lines[0]!.split(',');
+  const last = Object.fromEntries(lines[lines.length - 1]!.split(',').map((v, i) => [header[i]!, v]));
+  expect(last).toMatchObject({ condition: 'ghost_on', success: '1' });
+  expect(lines).toHaveLength(7);
+  for (const line of lines) expect(line.split(',')).toHaveLength(33);
+  await expect(readout).toContainText('written to 2 simulations');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('trial-download').click()]);
   const name = download.suggestedFilename();
   const expectedName = await page.evaluate(() => window.__sim!.trialCsvName!());
@@ -169,6 +191,6 @@ test('Earth-Moon delay: direct pick, Moon with the ghost, lag of each line, erro
   expect(name).toBe(expectedName);
   expect(name).toMatch(/^ghost-gate-s\d{8}-\d{6}\.csv$/);
 
-  writeFileSync(path.join(EVIDENCE_DIR, 's6-delay-ghost.json'), JSON.stringify({ ...report, trial: { row, csv, download: name } }, null, 2));
+  writeFileSync(path.join(EVIDENCE_DIR, 's6-delay-ghost.json'), JSON.stringify({ ...report, trial: { row, ghostRow, rows, csv, download: name } }, null, 2));
   expect(problems).toEqual([]);
 });

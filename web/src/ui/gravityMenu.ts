@@ -109,19 +109,27 @@ export class GravityMenu {
     parent.appendChild(this.root);
 
     gravity.onChange((preset) => this.show(preset));
+    // The ghost registers and unregisters on its own: keep the "written to N simulations" count true.
+    // A microtask later, because a simulation registers just before its model is stored.
+    gravity.onTargetsChange(() => queueMicrotask(() => this.showReadout(gravity.current)));
     this.show(gravity.current);
     requestAnimationFrame(this.frame);
   }
 
   private show(preset: GravityPreset): void {
     for (const [id, button] of this.buttons) button.setAttribute('aria-pressed', String(id === preset.id));
+    this.showReadout(preset);
+    this.lowG.hidden = !(preset.value < LOW_GRAVITY_NOTE_BELOW);
+    this.gone = false;
+    this.updateEscape();
+  }
+
+  /** The "Now: ..." line: the setting and every registered simulation's gravity. */
+  private showReadout(preset: GravityPreset): void {
     const sims = gravity.report();
     const values = sims.map((s) => `${s.name} ${s.gravity_m_s2 === null ? 'n/a' : sayGravityValue(s.gravity_m_s2)}`).join(', ');
     this.readout.textContent = `Now: ${preset.label}, ${sayGravityValue(preset.value)} m/s2, written to ${sims.length} simulation${sims.length === 1 ? '' : 's'} (${values}).`;
     this.readout.dataset.current = preset.id;
-    this.lowG.hidden = !(preset.value < LOW_GRAVITY_NOTE_BELOW);
-    this.gone = false;
-    this.updateEscape();
   }
 
   private readonly frame = (): void => {

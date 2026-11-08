@@ -60,6 +60,7 @@ export function isGravityId(value: unknown): value is GravityId {
 
 type ModelSource = () => MjModel | null;
 type Listener = (preset: GravityPreset) => void;
+type TargetsListener = () => void;
 
 /** Writes gravity (0, 0, -g) into a model's options. Takes effect on the next mj_step. */
 export function writeGravity(model: MjModel, magnitude: number): void {
@@ -76,6 +77,7 @@ export function readGravity(model: MjModel): number {
 export class GravityRegistry {
   private readonly targets = new Map<string, ModelSource>();
   private readonly listeners = new Set<Listener>();
+  private readonly targetListeners = new Set<TargetsListener>();
   private currentId: GravityId = 'earth';
 
   get current(): GravityPreset {
@@ -90,8 +92,11 @@ export class GravityRegistry {
     this.targets.set(name, model);
     const now = model();
     if (now) writeGravity(now, this.current.value);
+    this.targetsChanged();
     return () => {
-      if (this.targets.get(name) === model) this.targets.delete(name);
+      if (this.targets.get(name) !== model) return;
+      this.targets.delete(name);
+      this.targetsChanged();
     };
   }
 
@@ -114,6 +119,16 @@ export class GravityRegistry {
   onChange(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Called whenever a simulation registers or unregisters (the gravity itself is unchanged). */
+  onTargetsChange(listener: TargetsListener): () => void {
+    this.targetListeners.add(listener);
+    return () => this.targetListeners.delete(listener);
+  }
+
+  private targetsChanged(): void {
+    for (const listener of this.targetListeners) listener();
   }
 
   /** Each registered simulation and the gravity its model holds right now, in m/s^2. */

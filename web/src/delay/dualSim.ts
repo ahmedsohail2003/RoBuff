@@ -381,6 +381,10 @@ export class DelayRig {
   }
 
   dispose(): void {
+    // Give the shared live model its own rock back, so the rig leaves nothing behind.
+    this.restoreRock?.();
+    this.restoreRock = null;
+    this.rockOn = false;
     const ghost = this.ghost;
     this.ghost = null;
     this.ghostPending = null;

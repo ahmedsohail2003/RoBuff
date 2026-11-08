@@ -151,9 +151,11 @@ describe('Earth-Moon delay rig', () => {
   }, 120_000);
 
   it('with the hidden mismatch the rock error during the grasp is above zero, and is recorded', async () => {
+    const original = rockOnModel(mujoco, fullModel);
     const rig = makeRig();
-    const truthRock = rockOnModel(mujoco, rig.loop.sim.model);
     const run = await pairedPick(rig, 12 + ONE_WAY_DELAY_S);
+    // Read after pairedPick's setMode, which writes the truth rock onto the shared model.
+    const truthRock = rockOnModel(mujoco, rig.loop.sim.model);
     const ghostRock = rockOnModel(mujoco, rig.ghostSim!.model);
     console.log(`DELAY_MISMATCH truth rock ${JSON.stringify(truthRock)} ghost rock ${JSON.stringify(ghostRock)} ${JSON.stringify(run)}`);
     expect(truthRock).toEqual({ mass_g: expect.closeTo(62.1, 1), friction: 0.6, priority: 1 });
@@ -161,5 +163,8 @@ describe('Earth-Moon delay rig', () => {
     expect(run.maxRockGraspMm).toBeGreaterThan(0);
     expect(run.truthRockRiseMm).toBeGreaterThan(48);
     rig.dispose();
+    // dispose gives the shared model its own rock back, so the next test starts clean.
+    console.log(`DELAY_DISPOSE rock before ${JSON.stringify(original)} after ${JSON.stringify(rockOnModel(mujoco, fullModel))}`);
+    expect(rockOnModel(mujoco, fullModel)).toEqual(original);
   }, 120_000);
 });
