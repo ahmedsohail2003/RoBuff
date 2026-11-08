@@ -1,0 +1,108 @@
+/*
+ * The mission console look (M7): one calm dark layout. Viewport left, console right, the
+ * Sense -> Understand -> Act strip along the top of the viewport. Panels keep their own
+ * stylesheets; the rules here only place and recolour them, so every selector is scoped
+ * under body.console-layout or #console to win over the module styles.
+ * Panel text colours are chosen for at least 4.5:1 contrast on the panel backgrounds
+ * (checked by e2e/s9-states.spec.ts).
+ */
+
+:root {
+  --console-w: 380px;
+  --strip-h: 66px;
+  /* The SIMULATION label keeps the top-left corner (M3's place); the strip sits right under it. */
+  --strip-top: 40px;
+  --bg: #05070d;
+  --panel: #0d1322;
+  --panel-2: #121a2e;
+  --line: #27324f;
+  --text: #e6e9f2;
+  --muted: #aab3cc;
+  --accent: #7fd8ff;
+  --amber: #f2c14e;
+  --red: #ff6b6b;
+  --green: #5fd38a;
+  --view-mid: calc((100vw - var(--console-w)) / 2);
+}
+
+html, body { background: var(--bg); color: var(--text); }
+
+body.console-layout #viewport { right: var(--console-w); }
+/* A frame over the viewport for the freeze and stop states (pointer events pass through). */
+body.console-layout #viewport::after { content: ''; position: absolute; inset: 0; pointer-events: none; border: 0 solid transparent; transition: box-shadow .3s, border-color .3s; }
+body.console-layout.hand-lost #viewport::after { border: 3px solid var(--accent); box-shadow: inset 0 0 70px rgba(127, 216, 255, .35); }
+body.console-layout.arm-stopped #viewport::after { border: 4px solid var(--red); box-shadow: inset 0 0 70px rgba(255, 107, 107, .3); }
+
+/* Focus is always visible. */
+body.console-layout :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- the strip ---- */
+#loop-strip { position: fixed; z-index: 8; left: 0; right: var(--console-w); top: var(--strip-top); height: var(--strip-h); box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1.2fr); gap: 6px; align-items: stretch;
+  padding: 6px 10px; background: rgba(5, 7, 13, .94); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font: 12px/1.25 system-ui, sans-serif; }
+#loop-strip .arrow { align-self: center; color: #8a97b8; font-size: 16px; }
+#loop-strip .stage { min-width: 0; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+  transition: border-color .25s, background-color .25s, box-shadow .25s; }
+#loop-strip .stage .name { font-weight: 700; font-size: 11px; letter-spacing: .14em; color: var(--muted); }
+#loop-strip .stage .value { color: var(--text); overflow: hidden; font-variant-numeric: tabular-nums; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+#loop-strip .stage[data-active="true"] { border-color: var(--accent); background: #12233c; box-shadow: 0 0 12px rgba(127, 216, 255, .28); }
+#loop-strip .stage[data-active="true"] .name { color: var(--accent); }
+#loop-strip .stage[data-state="holding"] { border-color: var(--amber); }
+#loop-strip .stage[data-state="holding"] .name { color: var(--amber); }
+#loop-strip .stage[data-state="stopped"] { border-color: var(--red); background: #2a1016; }
+#loop-strip .stage[data-state="stopped"] .name { color: var(--red); }
+
+/* ---- things over the viewport ---- */
+body.console-layout #simulation-label { top: 8px; left: 12px; max-width: min(560px, calc(100vw - var(--console-w) - 24px)); }
+body.console-layout #status { top: calc(var(--strip-top) + var(--strip-h) + 8px); left: 12px; bottom: auto; max-width: calc(100vw - var(--console-w) - 24px);
+  padding: 4px 8px; background: rgba(5, 7, 13, .82); color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
+  font: 11.5px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace; }
+body.console-layout #hand-view { right: calc(var(--console-w) + 12px); bottom: 12px; border: 1px solid var(--line); box-shadow: none; }
+body.console-layout #hand-range { right: calc(var(--console-w) + 12px); bottom: 200px; max-width: 320px; background: rgba(5, 7, 13, .85); color: var(--muted); border: 1px solid var(--line); }
+body.console-layout #hand-state { left: var(--view-mid); bottom: 104px; background: #2b2410; color: var(--amber); border: 1px solid var(--amber); font-weight: 600; }
+body.console-layout #stop-banner { left: var(--view-mid); top: 42%; background: #1d0b10; color: var(--text); border: 2px solid var(--red); }
+body.console-layout #stop-banner strong { color: var(--red); }
+body.console-layout #camera-intro, body.console-layout #notice { left: var(--view-mid); top: calc(var(--strip-top) + var(--strip-h) + 48px); background: var(--panel); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
+body.console-layout #notice { border-color: var(--amber); z-index: 20; }
+body.console-layout #tracker-line { color: var(--muted); }
+#caption-bar { position: fixed; z-index: 7; left: var(--view-mid); bottom: 56px; transform: translateX(-50%); max-width: min(520px, calc(100vw - var(--console-w) - 300px));
+  padding: 6px 12px; background: rgba(5, 7, 13, .88); color: var(--text); border-radius: 4px; font: 14px/1.4 system-ui, sans-serif; text-align: center; }
+#caption-bar[hidden] { display: none; }
+
+/* Buttons that float over the viewport. */
+body.console-layout #stop-banner button, body.console-layout #camera-intro button, body.console-layout #notice button {
+  color: var(--text); background: #1d2850; border: 1px solid #4a5a8a; border-radius: 4px; cursor: pointer; }
+
+/* ---- the console column ---- */
+#console { position: fixed; z-index: 9; top: 0; right: 0; bottom: 0; width: var(--console-w); box-sizing: border-box; overflow-y: auto;
+  padding: 10px 12px 24px; background: var(--panel); border-left: 1px solid var(--line); color: var(--text); font: 12px/1.4 system-ui, sans-serif;
+  display: flex; flex-direction: column; gap: 10px; }
+#console h1 { margin: 0; font-size: 17px; letter-spacing: .04em; display: flex; align-items: baseline; gap: 8px; }
+#console h1 .sub { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: .06em; }
+#console .keys { margin: 4px 0 0; color: var(--muted); }
+#console .keys-note { margin: 2px 0 0; color: var(--amber); }
+#console .keys-note[hidden] { display: none; }
+#console kbd { font: 600 11px ui-monospace, Consolas, monospace; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+#console button { font: inherit; color: var(--text); background: #1d2850; border: 1px solid #3a466e; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+#console button:disabled { cursor: default; }
+#console #trial-toggle { margin-top: 6px; }
+#console #trial-toggle[aria-pressed="true"] { border-color: var(--accent); }
+#console .slot-head { margin: 0 0 4px; font-size: 13px; }
+#first-run-hint { padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; background: #0f1f33; }
+#first-run-hint ol { margin: 0 0 6px; padding-left: 18px; }
+#first-run-hint li { margin: 2px 0; }
+
+/* Panels inside the console flow in the column instead of floating. */
+#console #object-panel, #console #gravity-menu, #console #voice-panel, #console #left-stack, #console #delay-panel, #console #trial-hud, #console #stop-gesture {
+  position: static; inset: auto; transform: none; width: auto; max-width: none; max-height: none; margin: 0; box-shadow: none; z-index: auto; }
+#console #object-panel, #console #gravity-menu, #console #voice-panel, #console #delay-panel, #console #trial-hud, #console #stop-gesture {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+#console #left-stack { display: flex; flex-direction: column; gap: 8px; }
+#console #stop-gesture { padding: 6px 10px; font-size: 12px; }
+#console #stop-gesture.holding { border-color: var(--red); }
+/* Secondary text in the panels: lifted to the muted colour for contrast on the panel background. */
+#console #object-panel li .code, #console #voice-panel .caption .via { color: #9aa3bd; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

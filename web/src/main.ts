@@ -19,6 +19,7 @@ import { mountObjectPanel } from './ui/objectPanel';
 import { AppStates, chooseInputKind } from './ui/states';
 import { mountSpaceAndGravity } from './ui/gravityMenu';
 import { mountDelay } from './delay/mountDelay';
+import { mountConsole } from './ui/console';
 import { mountVoice } from './voice/pushToTalk';
 import { mountStopGesture } from './safety/mountStopGesture';
 
@@ -72,9 +73,10 @@ async function main(): Promise<void> {
     const webcam = loop.source;
     if (webcam instanceof WebcamSource) appStates.showCameraIntro(webcam, () => void appStates.startWebcam(webcam));
     mountSpaceAndGravity(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
-    mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
+    const delayRig = mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountStopGesture(app, webcam, import.meta.env.DEV || import.meta.env.MODE === 'test');
+    mountConsole(app, delayRig, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountObjectPanel(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test').catch((error: unknown) => {
       showNotice(`The object panel could not start: ${error instanceof Error ? error.message : String(error)}`);
     });
