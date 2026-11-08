@@ -7,6 +7,6 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node index.mjs",
-    "test": "node --test test/limits.test.mjs test/routes.test.mjs"
+    "test": "node --test test/limits.test.mjs test/routes.test.mjs test/skin.test.mjs"
   }
 }

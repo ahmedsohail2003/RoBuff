@@ -173,8 +173,11 @@ test('chat with a stubbed Gemini: { reply, action }; state and history reach the
   assert.ok(!calls[0].url.includes('test-gemini-value'));
   assert.match(sent.systemInstruction.parts[0].text, /RoBuff mission control/);
   assert.match(sent.systemInstruction.parts[0].text, /in simulation/);
-  assert.deepEqual(sent.generationConfig.responseJsonSchema.required, ['reply', 'action']);
-  assert.deepEqual(sent.generationConfig.responseJsonSchema.properties.action.properties.type.enum, ['spawn', 'gravity', 'mode', 'home', 'none']);
+  assert.deepEqual(sent.generationConfig.responseJsonSchema.required, ['reply', 'actions']);
+  assert.equal(sent.generationConfig.responseJsonSchema.properties.actions.type, 'array');
+  assert.equal(sent.generationConfig.responseJsonSchema.properties.actions.maxItems, 3);
+  assert.deepEqual(sent.generationConfig.responseJsonSchema.properties.actions.items.properties.type.enum, ['move', 'grip', 'pick', 'place', 'release', 'home', 'gravity', 'mode', 'spawn', 'skin', 'unskin', 'none']);
+  assert.deepEqual(body.actions, [{ type: 'none' }]);
   const prompt = sent.contents[0].parts[0].text;
   assert.match(prompt, /"mode":"moon_ghost_on","gravity":"mars","lastObject":"a tennis ball","stopped":false/);
   assert.match(prompt, /Operator now: what's the gravity on the moon\?/);
@@ -237,4 +240,50 @@ test("chat prompt quotes the app's own gravity presets (web/src/objects/limits.t
   assert.equal(value('bennu'), 0.000083);
   assert.match(CHAT_SYSTEM_PROMPT, /Bennu 0\.000083/);
   assert.equal(value('orbit'), 0);
+});
+
+test('chat actions: a list of up to 3, each checked; action stays actions[0] for older pages', async () => {
+  const state = { mode: 'direct', gravity: 'earth', lastObject: null, stopped: false, object: { name: 'Tesla Model 3', partNames: ['body', 'wheel front left', 'wheel front right', 'roof'], skin: 'gold' }, holding: false, gripper_cm: [0, -23.89, 8.02], secret: 'dropped' };
+  const answers = [
+    { reply: 'Picking it up and lifting a little, in simulation.', actions: [{ type: 'pick', value: 'the cube' }, { type: 'move', value: 'up 2 cm' }] },
+    { reply: 'Moving.', actions: [{ type: 'move', value: 'sideways 5 cm' }, { type: 'move', value: 'left 45 cm' }, { type: 'move', value: 'Move toward me 30 mm' }, { type: 'grip', value: 'close' }] },
+    { reply: 'Painting.', actions: [{ type: 'skin', value: 'black chrome', part: 'wheels' }, { type: 'skin', value: 'red', part: 'spoiler' }, { type: 'unskin', part: 'roof' }] },
+    { reply: 'Stopped, so nothing moves.', actions: [{ type: 'move', value: 'left 5 cm' }, { type: 'gravity', value: 'Moon' }, { type: 'stop' }] },
+    { reply: 'Old shape.', action: { type: 'home' } },
+    { reply: 'Down and open.', actions: [{ type: 'place' }, { type: 'release', value: 'x' }, { type: 'grip', value: 'sideways' }] },
+  ];
+  let n = 0;
+  const prompts = [];
+  const fetchImpl = async (_url, init) => {
+    prompts.push(JSON.parse(init.body).contents[0].parts[0].text);
+    return geminiReply(answers[n++]);
+  };
+  const { base } = await start({ config: FAKE_KEYS, fetchImpl });
+  const ask = async (st = state) => (await post(base, '/api/chat', { text: 'could you grab the cube and lift it a little higher', history: [], state: st })).json();
+  const first = await ask();
+  assert.deepEqual(first.actions, [{ type: 'pick', value: 'the cube' }, { type: 'move', value: 'up 2 cm' }]);
+  assert.deepEqual(first.action, { type: 'pick', value: 'the cube' });
+  // The new state fields reach the prompt; unknown ones are dropped.
+  assert.match(prompts[0], /"object":\{"name":"Tesla Model 3","partNames":\["body","wheel front left","wheel front right","roof"\],"skin":"gold"\},"holding":false,"gripper_cm":\[0,-23.9,8\]/);
+  assert.ok(!prompts[0].includes('secret'));
+  // A bad direction is dropped, a distance is clamped to 30 cm, mm become cm, and the 4th action is cut.
+  assert.deepEqual((await ask()).actions, [{ type: 'move', value: 'left 30 cm' }, { type: 'move', value: 'toward me 3 cm' }, { type: 'grip', value: 'close' }]);
+  // A skin part is kept only when it is one of the object's parts.
+  assert.deepEqual((await ask()).actions, [{ type: 'skin', value: 'black chrome', part: 'wheels' }, { type: 'skin', value: 'red' }, { type: 'unskin', part: 'roof' }]);
+  // While stopped: no arm action, stop becomes nothing, gravity may still change.
+  assert.deepEqual((await ask({ ...state, stopped: true })).actions, [{ type: 'gravity', value: 'moon' }]);
+  const old = await ask();
+  assert.deepEqual(old.actions, [{ type: 'home' }]);
+  assert.deepEqual(old.action, { type: 'home' });
+  assert.deepEqual((await ask()).actions, [{ type: 'place' }, { type: 'release' }]);
+});
+
+test('the chat action list and move directions match the browser (web/src/voice/liveTalk.ts)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { CHAT_ACTIONS, CHAT_MOVE_DIRECTIONS, CHAT_MAX_ACTIONS } = await import('../index.mjs');
+  const source = readFileSync(new URL('../../web/src/voice/liveTalk.ts', import.meta.url), 'utf8');
+  const list = (name) => JSON.parse(`[${/export const NAME = \[([^\]]*)\]/.exec(source.replace(name, 'NAME'))?.[1].replace(/'/g, '"') ?? ''}]`);
+  assert.deepEqual(list('CHAT_ACTIONS'), CHAT_ACTIONS);
+  assert.deepEqual(list('CHAT_MOVE_DIRECTIONS'), CHAT_MOVE_DIRECTIONS);
+  assert.equal(Number(/export const CHAT_MAX_ACTIONS = (\d+)/.exec(source)?.[1]), CHAT_MAX_ACTIONS);
 });

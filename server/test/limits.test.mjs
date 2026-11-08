@@ -19,7 +19,26 @@ test('daily caps: 300 spec calls and 20,000 TTS characters', () => {
   assert.equal(limits.takeTts(19_990), true);
   assert.equal(limits.takeTts(11), false);
   assert.equal(limits.takeTts(10), true);
-  assert.deepEqual(limits.snapshot(), { per_minute: 30, spec_calls_today: 300, spec_calls_per_day: 300, tts_chars_today: 20_000, tts_chars_per_day: 20_000 });
+  assert.deepEqual(limits.snapshot(), {
+    per_minute: 30, spec_calls_today: 300, spec_calls_per_day: 300, tts_chars_today: 20_000, tts_chars_per_day: 20_000,
+    image_calls_today: 0, image_units_today: 0, image_units_per_day: 40,
+  });
+});
+
+test('image cap: 40 units a day, a Pro image costs 4, and it resets at midnight', () => {
+  let t = new Date(2026, 10, 8, 12, 0, 0).getTime();
+  const limits = createLimits({ now: () => t });
+  for (let i = 0; i < 9; i++) assert.equal(limits.takeImage(4), true, `pro image ${i + 1}`);
+  assert.equal(limits.takeImage(4), true, '10th pro image fills 40 units exactly');
+  assert.equal(limits.takeImage(1), false, 'the 41st unit is refused');
+  assert.equal(limits.takeImage(0), false, 'zero units is never a free call');
+  assert.equal(limits.snapshot().image_calls_today, 10);
+  assert.equal(limits.snapshot().image_units_today, 40);
+  assert.equal(limits.takeSpec(), true, 'the image cap is separate from the Gemini spec cap');
+  t += 24 * 3600_000;
+  assert.equal(limits.snapshot().image_units_today, 0);
+  for (let i = 0; i < 40; i++) assert.equal(limits.takeImage(1), true);
+  assert.equal(limits.takeImage(1), false);
 });
 
 test('origin check: local pages and listed origins only', () => {

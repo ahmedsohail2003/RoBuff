@@ -21,3 +21,5 @@ e2e/fixtures/*.jpg
 /.s5-regress
 # ElevenLabs audio for fixed console lines, cached by the key server (server/index.mjs)
 /.voice-cache
+# Nano Banana skin images, cached by the key server (server/skin.mjs). Paid images: never commit.
+/.skin-cache

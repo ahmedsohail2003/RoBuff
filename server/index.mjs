@@ -3,8 +3,9 @@
 //   GET  /api/health  -> { ok, gemini: 'configured'|'missing', elevenlabs: 'configured'|'missing', ... }
 //   POST /api/spec    { text }  -> Gemini structured output: { source, model, intent, gravity, spec, latency_ms }
 //   POST /api/tts     { text (<= 160 chars), fixed? } -> ElevenLabs mp3 stream; fixed lines cached on disk
-//   POST /api/chat    { text, history (last 6 turns), state: { mode, gravity, lastObject, stopped } }
-//                     -> Gemini structured output: { source, model, reply (<= 200 chars), action: { type, value? }, latency_ms }
+//   POST /api/chat    { text, history (last 6 turns), state: { mode, gravity, lastObject, stopped, object?, holding?, gripper_cm? } }
+//                     -> Gemini structured output: { source, model, reply (<= 200 chars), actions: [{ type, value?, part? }] (<= 3),
+//                        action: actions[0] (for older pages), latency_ms }
 // Keys come from web/.env (or the process environment). Their values are never logged or sent back.
 // Run: node server/index.mjs   (port 8787 on 127.0.0.1; PORT and HOST override)
 
@@ -15,6 +16,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { createLimits, isAllowedOrigin } from './limits.mjs';
+import { createSkinRoutes } from './skin.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const GEMINI_MODEL = 'gemini-3.8-flash';
@@ -183,7 +185,13 @@ async function askGemini(key, text, fetchImpl, objectMode = false) {
 
 export const CHAT_REPLY_MAX_CHARS = 200;
 export const CHAT_HISTORY_TURNS = 6;
-export const CHAT_ACTIONS = ['spawn', 'gravity', 'mode', 'home', 'none'];
+/** What a chat answer can make the app do, in order, at most CHAT_MAX_ACTIONS per turn. The browser keeps the same list (web/src/voice/liveTalk.ts). */
+export const CHAT_ACTIONS = ['move', 'grip', 'pick', 'place', 'release', 'home', 'gravity', 'mode', 'spawn', 'skin', 'unskin', 'none'];
+export const CHAT_MAX_ACTIONS = 3;
+/** Directions a move value may start with; the browser re-parses the whole value with its own grammar. */
+export const CHAT_MOVE_DIRECTIONS = ['left', 'right', 'up', 'down', 'forward', 'back', 'toward me', 'away from me'];
+/** Actions that move the arm or the jaw: never while the stop latch is set. */
+const CHAT_ARM_ACTIONS = ['move', 'grip', 'pick', 'place', 'release', 'home', 'spawn'];
 const CHAT_GRAVITY = ['earth', 'mars', 'moon', 'bennu', 'orbit'];
 /** The delay panel's modes (web/src/delay/dualSim.ts DELAY_MODES). */
 const CHAT_MODES = ['direct', 'moon_ghost_off', 'moon_ghost_on'];
@@ -192,17 +200,28 @@ export const CHAT_SCHEMA = {
   type: 'object',
   properties: {
     reply: { type: 'string', description: 'What RoBuff mission control says aloud: at most 200 characters, one or two sentences.' },
-    action: {
-      type: 'object',
-      properties: {
-        type: { type: 'string', enum: CHAT_ACTIONS },
-        value: { type: 'string', description: 'spawn: a short description of the object; gravity: earth, mars, moon, bennu or orbit; mode: direct, moon_ghost_off or moon_ghost_on.' },
+    actions: {
+      type: 'array',
+      description: 'What the app does, in the order it should happen: at most 3. Use [{"type":"none"}] for questions and chat.',
+      maxItems: CHAT_MAX_ACTIONS,
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: CHAT_ACTIONS },
+          value: {
+            type: 'string',
+            description:
+              'move: a direction and distance such as "left 5 cm", "up 2 cm" or "toward me 3 cm"; grip: open or close; pick: what to pick up; spawn: a short description of the object; gravity: earth, mars, moon, bennu or orbit; mode: direct, moon_ghost_off or moon_ghost_on; skin: the look, such as "gold" or "carbon fibre".',
+          },
+          part: { type: 'string', description: 'skin and unskin only: one part name from state.object.partNames, or leave it out for the whole object.' },
+        },
+        required: ['type'],
+        propertyOrdering: ['type', 'value', 'part'],
       },
-      required: ['type'],
     },
   },
-  required: ['reply', 'action'],
-  propertyOrdering: ['reply', 'action'],
+  required: ['reply', 'actions'],
+  propertyOrdering: ['reply', 'actions'],
 };
 
 /**
@@ -211,14 +230,17 @@ export const CHAT_SCHEMA = {
  */
 export const CHAT_SYSTEM_PROMPT = [
   'You are RoBuff mission control, the voice of RoBuff: a robot arm that exists only in a browser simulation (MuJoCo physics). The operator talks to you hands-free and hears your reply spoken aloud.',
-  'Answer with JSON only: reply and action.',
+  'Answer with JSON only: reply and actions.',
   'reply: at most 200 characters, one or two short sentences, friendly and plain, no lists, no markdown, no emoji.',
   'Be honest: everything here is simulated. Say "in simulation" when you speak of what the arm or an object did or will do, and never claim a real arm.',
   'Never invent numbers. Quote only numbers from the state or from these facts: gravity presets in this app, in metres per second squared, Earth 9.82, Mars 3.73, Moon 1.62, Bennu 0.000083 (an asteroid; calculated from JPL data), orbit 0 in the simulation. In the Earth-Moon delay modes the operator sees the arm as it was 1.28 seconds ago (simulated). If you do not know a number, say so.',
-  'Vary your wording and do not repeat an earlier reply. Talk about what they asked; do not bring up the jaw, the gripper or the stop button unless they ask.',
-  'action is what the app does. spawn, with value a short plain description of the object such as "a tennis ball", when they want an object made; the app checks it against the arm\'s limits and runs a simulated lift test, so say it will be checked, never that it fits.',
-  'gravity, with value earth, mars, moon, bennu or orbit, when they want the gravity changed. mode, with value direct, moon_ghost_off or moon_ghost_on, when they want the Earth-Moon delay mode off or on (moon_ghost_on adds the predicted ghost arm). home sends the arm to its home pose. none for questions and chat.',
-  'You can never stop or resume the arm: the app handles stop itself and only the on-screen Resume button clears it. When state.stopped is true, use action none for home and spawn and say Resume is on screen.',
+  'Vary your wording and do not repeat an earlier reply. Talk about what they asked.',
+  'actions is what the app does, in the order it should happen, at most 3. The app checks each one again and runs them through the same handlers as the voice grammar.',
+  'You can drive the arm: move, with value a direction and a distance, where the direction is left, right, up, down, forward, back, toward me or away from me and the distance is in cm (for example "left 5 cm"; "a bit" is 2 cm, no amount is 5 cm, at most 30 cm). grip, with value open or close. pick picks up the object in the slot (state.object) with the lift test\'s grasp and checks both jaws; value is what they named. place puts down what the arm holds (state.holding). release opens the jaw and drops it. home sends the arm to its home pose.',
+  'You can dress the object: skin, with value the look they asked for (a colour, a material or a picture in words) and part only when they named one of state.object.partNames; it only paints, mass, friction and shape stay the same. unskin removes the skin, with part for one part.',
+  'spawn, with value a short plain description of the object such as "a tennis ball", when they want a new object made; the app checks it against the arm\'s limits and runs a simulated lift test, so say it will be checked, never that it fits. gravity, with value earth, mars, moon, bennu or orbit. mode, with value direct, moon_ghost_off or moon_ghost_on, for the Earth-Moon delay (moon_ghost_on adds the predicted ghost arm). none for questions and chat.',
+  'There is one object slot: if they name a different object than state.object, say what is in the slot and offer to make theirs.',
+  'You can never stop or resume the arm: the app handles stop itself and only the on-screen Resume button clears it. When state.stopped is true, use no arm action (no move, grip, pick, place, release, home or spawn) and say Resume is on screen.',
 ].join(' ');
 
 /** At most max characters: whole sentences if they fit, else whole words. */
@@ -232,26 +254,95 @@ export function clipReply(text, max = CHAT_REPLY_MAX_CHARS) {
   return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[,;:]$/, '')}.`;
 }
 
-/** A model action the app can run, or none. */
-export function cleanChatAction(raw) {
+/** A move value the browser can re-parse: a listed direction, then an optional amount in cm, mm or words, at most 30 cm. */
+export function cleanMoveValue(raw) {
+  const text = String(raw ?? '').toLowerCase().replace(/[^a-z0-9. ]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(?:move|go)\s+/, '');
+  const direction = CHAT_MOVE_DIRECTIONS.find((d) => text === d || text.startsWith(`${d} `));
+  if (!direction) return null;
+  const rest = text.slice(direction.length).trim().replace(/^by\s+/, '');
+  if (!rest) return direction;
+  if (/^(?:a bit|a little|slightly|a lot|all the way)$/.test(rest)) return `${direction} ${rest}`;
+  const amount = /^(\d+(?:\.\d+)?)\s*(cm|mm|centimetres?|centimeters?|millimetres?|millimeters?)?$/.exec(rest);
+  if (!amount) return null;
+  const cm = Number(amount[1]) * (/^m/.test(amount[2] ?? '') ? 0.1 : 1);
+  if (!Number.isFinite(cm) || cm < 0.5) return null;
+  return `${direction} ${Math.round(Math.min(30, cm) * 10) / 10} cm`;
+}
+
+/** The part a skin action names, kept only when it is one of the object's own part names. */
+function cleanPart(raw, state) {
+  const part = typeof raw === 'string' ? raw.trim().toLowerCase().slice(0, 24) : '';
+  if (!part) return null;
+  const names = (state?.object?.partNames ?? []).map((n) => String(n).toLowerCase());
+  const singular = part.replace(/s$/, '');
+  return names.some((n) => n === part || n.replace(/s$/, '').startsWith(singular) || n.includes(singular)) ? part : null;
+}
+
+/** A model action the app can run, or none. state is the cleaned chat state (for skin parts). */
+export function cleanChatAction(raw, state = null) {
   const type = CHAT_ACTIONS.includes(raw?.type) ? raw.type : 'none';
   const value = typeof raw?.value === 'string' ? raw.value.trim().slice(0, 200) : '';
   if (type === 'spawn' && value) return { type, value };
   if (type === 'gravity' && CHAT_GRAVITY.includes(value.toLowerCase())) return { type, value: value.toLowerCase() };
   if (type === 'mode' && CHAT_MODES.includes(value)) return { type, value };
-  if (type === 'home') return { type };
+  if (type === 'home' || type === 'place' || type === 'release') return { type };
+  if (type === 'move') {
+    const move = cleanMoveValue(value);
+    return move ? { type, value: move } : { type: 'none' };
+  }
+  if (type === 'grip' && ['open', 'close'].includes(value.toLowerCase())) return { type, value: value.toLowerCase() };
+  if (type === 'pick') return value ? { type, value: value.slice(0, 60) } : { type };
+  if (type === 'skin' && value) {
+    const part = cleanPart(raw?.part, state);
+    return part ? { type, value: value.slice(0, 120), part } : { type, value: value.slice(0, 120) };
+  }
+  if (type === 'unskin') {
+    const part = cleanPart(raw?.part, state);
+    return part ? { type, part } : { type };
+  }
   return { type: 'none' };
 }
 
-/** The state and history the browser sent, trimmed to what the prompt needs. */
-function chatPrompt(body, text) {
-  const s = body?.state && typeof body.state === 'object' ? body.state : {};
+/**
+ * The model's action list, cleaned: each action checked, none dropped, at most 3, and no arm
+ * action while the stop latch is set. An older single `action` is read as a list of one.
+ */
+export function cleanChatActions(raw, state = null) {
+  const list = Array.isArray(raw?.actions) ? raw.actions : raw?.action ? [raw.action] : [];
+  const stopped = state?.stopped === true;
+  const actions = list
+    .slice(0, 6)
+    .map((a) => cleanChatAction(a, state))
+    .filter((a) => a.type !== 'none' && !(stopped && CHAT_ARM_ACTIONS.includes(a.type)))
+    .slice(0, CHAT_MAX_ACTIONS);
+  return actions.length ? actions : [{ type: 'none' }];
+}
+
+/** The state the browser sent, trimmed to what the prompt needs: unknown fields are dropped. */
+export function cleanChatState(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
   const state = {
     mode: CHAT_MODES.includes(s.mode) ? s.mode : 'direct',
     gravity: CHAT_GRAVITY.includes(s.gravity) ? s.gravity : 'earth',
     lastObject: typeof s.lastObject === 'string' && s.lastObject.trim() ? s.lastObject.trim().slice(0, 120) : null,
     stopped: s.stopped === true,
   };
+  const o = s.object && typeof s.object === 'object' ? s.object : null;
+  if (o && typeof o.name === 'string' && o.name.trim()) {
+    state.object = {
+      name: o.name.trim().slice(0, 40),
+      partNames: (Array.isArray(o.partNames) ? o.partNames : []).filter((n) => typeof n === 'string' && n.trim()).slice(0, 8).map((n) => n.trim().slice(0, 24)),
+    };
+    if (typeof o.skin === 'string' && o.skin.trim()) state.object.skin = o.skin.trim().slice(0, 60);
+  }
+  if (typeof s.holding === 'boolean') state.holding = s.holding;
+  if (Array.isArray(s.gripper_cm) && s.gripper_cm.length === 3 && s.gripper_cm.every((v) => Number.isFinite(v))) state.gripper_cm = s.gripper_cm.map((v) => Math.round(v * 10) / 10);
+  return state;
+}
+
+/** The state and history the browser sent, trimmed to what the prompt needs. */
+function chatPrompt(body, text) {
+  const state = cleanChatState(body?.state);
   const history = (Array.isArray(body?.history) ? body.history : [])
     .filter((t) => t && (t.role === 'user' || t.role === 'robuff') && typeof t.text === 'string' && t.text.trim())
     .slice(-CHAT_HISTORY_TURNS)
@@ -289,7 +380,7 @@ async function askGeminiChat(key, prompt, fetchImpl) {
 
 /**
  * @param {{ config?: ReturnType<typeof loadConfig>, limits?: ReturnType<typeof createLimits>, fetchImpl?: typeof fetch,
- *   cacheDir?: string, log?: (line: string) => void }} [options]
+ *   cacheDir?: string, skinCacheDir?: string, log?: (line: string) => void }} [options]
  */
 export function createAppServer(options = {}) {
   const config = options.config ?? loadConfig();
@@ -299,9 +390,10 @@ export function createAppServer(options = {}) {
   const log = options.log ?? ((line) => console.log(line));
   const gemini = config.geminiKey ? 'configured' : 'missing';
   const elevenlabs = config.elevenKey && config.voiceId ? 'configured' : 'missing';
+  const skin = createSkinRoutes({ config, limits, fetchImpl, cacheDir: options.skinCacheDir });
 
   function health() {
-    const body = { ok: true, server: 'robuff key server', gemini, elevenlabs, models: { spec: GEMINI_MODEL, tts: TTS_MODEL }, limits: limits.snapshot() };
+    const body = { ok: true, server: 'robuff key server', gemini, elevenlabs, skin: skin.status, models: { spec: GEMINI_MODEL, tts: TTS_MODEL, ...skin.models }, limits: limits.snapshot() };
     if (config.elevenKey && !config.voiceId) body.elevenlabs_note = 'ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is not.';
     return body;
   }
@@ -334,7 +426,9 @@ export function createAppServer(options = {}) {
     const latency_ms = Math.round(performance.now() - t0);
     const reply = clipReply(raw?.reply);
     if (!reply) throw new HttpError(502, 'Gemini sent no reply, so live talk knows only the offline commands for now.');
-    sendJson(res, 200, { source: 'gemini', model: GEMINI_MODEL, reply, action: cleanChatAction(raw?.action), latency_ms });
+    const actions = cleanChatActions(raw, cleanChatState(body?.state));
+    // action = actions[0] keeps pages built before the action list working.
+    sendJson(res, 200, { source: 'gemini', model: GEMINI_MODEL, reply, actions, action: actions[0], latency_ms });
   }
 
   async function tts(req, res) {
@@ -390,7 +484,8 @@ export function createAppServer(options = {}) {
         if (route === '/api/spec') await spec(req, res);
         else if (route === '/api/chat') await chat(req, res);
         else await tts(req, res);
-      } else throw new HttpError(404, 'Not found. Routes: GET /api/health, POST /api/spec, POST /api/tts, POST /api/chat.');
+      } else if (skin.handles(req.method, route)) await skin.handle(req, res, route);
+      else throw new HttpError(404, 'Not found. Routes: GET /api/health, POST /api/spec, POST /api/tts, POST /api/chat, POST /api/skin, GET /api/skin/<hash>.jpg.');
     } catch (error) {
       const status = error instanceof HttpError ? error.status : error?.name === 'TimeoutError' ? 504 : 500;
       const message = error instanceof HttpError ? error.message : status === 504 ? 'The upstream service timed out.' : 'The key server hit an error.';

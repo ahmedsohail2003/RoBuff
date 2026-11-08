@@ -1,10 +1,12 @@
-// Abuse limits for the key server: a per-IP request rate, daily caps on Gemini calls and
-// ElevenLabs characters, and an origin check. All in memory: a restart resets them.
+// Abuse limits for the key server: a per-IP request rate, daily caps on Gemini calls,
+// ElevenLabs characters and Nano Banana image units, and an origin check. All in memory: a restart resets them.
 
 export const DEFAULT_LIMITS = Object.freeze({
   perMinute: 30,
   specPerDay: 300,
   ttsCharsPerDay: 20000,
+  /** Nano Banana skin images, in units: a 'fast' image costs 1, a 'high' (Pro) image costs 4. */
+  imagePerDay: 40,
 });
 
 /** Local calendar day, so the daily caps reset at the server's midnight. */
@@ -14,18 +16,21 @@ function dayKey(ms) {
 }
 
 /**
- * @param {{ perMinute?: number, specPerDay?: number, ttsCharsPerDay?: number, now?: () => number }} [options]
+ * @param {{ perMinute?: number, specPerDay?: number, ttsCharsPerDay?: number, imagePerDay?: number, now?: () => number }} [options]
  */
 export function createLimits(options = {}) {
   const perMinute = options.perMinute ?? DEFAULT_LIMITS.perMinute;
   const specPerDay = options.specPerDay ?? DEFAULT_LIMITS.specPerDay;
   const ttsCharsPerDay = options.ttsCharsPerDay ?? DEFAULT_LIMITS.ttsCharsPerDay;
+  const imagePerDay = options.imagePerDay ?? DEFAULT_LIMITS.imagePerDay;
   const now = options.now ?? Date.now;
   /** ip -> request times in the last minute, oldest first */
   const hits = new Map();
   let day = dayKey(now());
   let specCalls = 0;
   let ttsChars = 0;
+  let imageCalls = 0;
+  let imageUnits = 0;
 
   function rollDay() {
     const today = dayKey(now());
@@ -33,6 +38,8 @@ export function createLimits(options = {}) {
       day = today;
       specCalls = 0;
       ttsChars = 0;
+      imageCalls = 0;
+      imageUnits = 0;
     }
   }
 
@@ -64,6 +71,14 @@ export function createLimits(options = {}) {
       ttsChars += chars;
       return true;
     },
+    /** Takes one image call costing this many units from today's cap. False if it does not fit. */
+    takeImage(units = 1) {
+      rollDay();
+      if (!(units > 0) || imageUnits + units > imagePerDay) return false;
+      imageUnits += units;
+      imageCalls++;
+      return true;
+    },
     snapshot() {
       rollDay();
       return {
@@ -72,6 +87,9 @@ export function createLimits(options = {}) {
         spec_calls_per_day: specPerDay,
         tts_chars_today: ttsChars,
         tts_chars_per_day: ttsCharsPerDay,
+        image_calls_today: imageCalls,
+        image_units_today: imageUnits,
+        image_units_per_day: imagePerDay,
       };
     },
   };
