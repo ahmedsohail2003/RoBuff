@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RoBuff · Pick up a space rock with your bare hand (simulated) · UB Hacking 2026</title>
-  <meta name="description" content="RoBuff is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; so far that path is tested with a scripted hand, a photo and Chrome's fake camera, not a real hand. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
+  <meta name="description" content="RoBuff is a browser testbed built at UB Hacking 2026 for steering a physics-simulated SO-ARM100 robot arm with your hand through a laptop webcam; the author has steered it with his own hand, and its measured numbers come from automated tests with a scripted hand, a photo and Chrome's fake camera. The arm picks up rocks and satellite parts by friction alone, and every object you ask for is checked against the arm's limits, placed, and proven with a simulated lift test; an object that fails is taken back out.">
   <meta name="theme-color" content="#0b0c0e">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RoBuff">
   <meta property="og:title" content="RoBuff · Pick up a space rock with your bare hand">
-  <meta property="og:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026. Everything shown is a simulation, and a real hand has not been tested yet.">
+  <meta property="og:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026. Everything shown is a simulation.">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="RoBuff · Pick up a space rock with your bare hand">
-  <meta name="twitter:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026; a real hand has not been tested yet.">
+  <meta name="twitter:description" content="Built so a webcam hand can steer a physics-simulated SO-ARM100 robot arm that picks up rocks and satellite parts by friction alone. Built solo at UB Hacking 2026.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect width='22' height='22' rx='6' fill='%230b0c0e'/%3E%3Cpath d='M7 6H5.5v10H7M15 6h1.5v10H15' stroke='white' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='11' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,7 +75,7 @@
             <span class="grey scramble" id="hero-rotate" aria-hidden="true"
                   data-phrases='["with your bare hand.","by friction alone.","if a lift test passes."]'>with your bare hand.</span>
           </h1>
-          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. RoBuff lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. So far only a scripted hand has flown it: the cube rose 78.4&nbsp;mm in 5 of 5 runs.</p>
+          <p class="summary">Light takes 2.56&nbsp;s to reach the Moon and back; in a 2024 University of Bristol study, people steering a robot arm at delays up to 2.6&nbsp;s did worse on every measure. RoBuff lets your webcam hand fly a simulated arm that grips by friction, and a ghost arm shows where it is headed. It works with a real hand on a laptop webcam; in the logged scripted runs the cube rose 78.4&nbsp;mm in 5 of 5.</p>
           <div class="ctas">
             <a class="btn btn-light" href="#how">See how it works <span class="arrow" aria-hidden="true">&rarr;</span></a>
             <a class="btn btn-ghost" href="https://github.com/ahmedsohail2003/buffalo-hackathon-2">Read the code</a>
@@ -146,7 +146,7 @@
                 <div><span>Slowest frame</span><span>17.5 ms</span></div>
                 <div><span>Frames with a hand</span><span>123 / 123</span></div>
               </div>
-              <p class="foot">Measured on Chrome's fake camera fed from a picture, in headless Chrome on a laptop GPU. Not yet a real hand.</p>
+              <p class="foot">Measured on Chrome's fake camera fed from a picture, in headless Chrome. A real hand on a webcam works too; those runs were not timed.</p>
             </article>
             <div class="connector" aria-hidden="true"><div class="dots"><i></i><i></i></div><span class="tag">21 points</span></div>
             <article class="lcard dark">
@@ -177,7 +177,7 @@
             </article>
           </div>
           <div class="bracket" aria-hidden="true"></div>
-          <p class="bracket-cap">Hand-to-arm loop in the browser · 240 frames per second in headless Chrome on a laptop GPU, physics at 500 steps per second</p>
+          <p class="bracket-cap">Hand-to-arm loop in the browser · 240 frames per second in headless Chrome on a laptop, physics at 500 steps per second</p>
           <div class="rings">
             <div class="ring">
               <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="track" cx="26" cy="26" r="22"/><circle class="val" cx="26" cy="26" r="22" data-ring="1"/></svg>
@@ -205,16 +205,16 @@
             <div class="copy">
               <div class="num">01</div>
               <h3 id="step1-title">Your hand drives the arm</h3>
-              <p>MediaPipe finds the hand in each webcam frame. Moving your hand moves the arm, bringing it nearer or farther changes the reach, and a pinch closes the jaw. So far this path is tested with a scripted hand, a photo and Chrome's fake camera; a real hand has not been tried yet.</p>
+              <p>MediaPipe finds the hand in each webcam frame. Moving your hand moves the arm, bringing it nearer or farther changes the reach, and a pinch closes the jaw. I have used it with my own hand on a laptop webcam; the automated tests use a scripted hand, a photo and Chrome's fake camera.</p>
             </div>
             <div class="mini" aria-label="Example of the app's hand-tracking status strip, with values from the fake-camera test">
               <div class="head"><span class="tag">Hand tracking</span></div>
               <div class="field"><span>input</span><b>fake camera (test)</b></div>
               <div class="field"><span>hand</span><b><span class="dot-live" aria-hidden="true"></span>found</b></div>
-              <div class="field"><span>tracking</span><b>11 ms (laptop GPU)</b></div>
+              <div class="field"><span>tracking</span><b>11 ms</b></div>
               <div class="field"><span>grip</span><b id="mini-grip">open</b></div>
               <div class="field"><span>points</span><b>21</b></div>
-              <p class="mini-tag tag">Example values from the fake-camera test · real webcam not tested yet</p>
+              <p class="mini-tag tag">Example values from the fake-camera test</p>
             </div>
             <span class="sr-only">Screenshot of the simulated arm on a dark lunar-style floor under a starfield, holding the red test cube, steered by the app's scripted virtual hand, drawn as horizontal halftone lines.</span>
           </article>
@@ -321,8 +321,8 @@
             <div class="vis" aria-hidden="true">
               <svg viewBox="0 0 300 140"><g fill="#0b0c0e"><circle cx="150" cy="112" r="3.5"/><circle cx="128" cy="92" r="3"/><circle cx="118" cy="72" r="3"/><circle cx="112" cy="54" r="3"/><circle cx="138" cy="66" r="3"/><circle cx="136" cy="44" r="3"/><circle cx="135" cy="26" r="3"/><circle cx="154" cy="64" r="3"/><circle cx="155" cy="40" r="3"/><circle cx="156" cy="20" r="3"/><circle cx="170" cy="66" r="3"/><circle cx="173" cy="46" r="3"/><circle cx="175" cy="30" r="3"/><circle cx="182" cy="76" r="3"/><circle cx="192" cy="62" r="3"/><circle cx="200" cy="50" r="3"/></g><g fill="none" stroke="#0b0c0e" stroke-width="1.2"><path d="M150 112L128 92L118 72L112 54M150 112L138 66L136 44L135 26M150 112L154 64L155 40L156 20M150 112L170 66L173 46L175 30M150 112L182 76L192 62L200 50"/></g></svg>
             </div>
-            <div class="top"><h3>MediaPipe Hand Landmarker</h3><span class="status ok">Working (real hand not tested yet)</span></div>
-            <p>Google's public hand-pose model: 21 points per hand from a camera image, on the laptop, so no frame is uploaded. Median 11&nbsp;ms a frame on Chrome's fake camera (laptop GPU).</p>
+            <div class="top"><h3>MediaPipe Hand Landmarker</h3><span class="status ok">Working · tried with a real hand</span></div>
+            <p>Google's public hand-pose model: 21 points per hand from a camera image, on the laptop, so no frame is uploaded. Median 11&nbsp;ms a frame on Chrome's fake camera.</p>
           </article>
           <article class="tcard reveal">
             <div class="vis" aria-hidden="true">
@@ -366,7 +366,7 @@
             <caption class="sr-only">State of each part of RoBuff</caption>
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">What that means</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a picture and a fake camera: 123 of 123 frames found the hand. <b>A real hand on a real webcam has not been tested yet.</b></td></tr>
+              <tr><th scope="row">Hand to arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Tested with a scripted hand, a picture and a fake camera: 123 of 123 frames found the hand. <b>It also works with a real hand on a laptop webcam (tried by the author; not timed).</b></td></tr>
               <tr><th scope="row">Friction pick and lift</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Cube rose 78.4&nbsp;mm and held 5.73&nbsp;s (scripted hand through the hand-to-arm mapping); 5 of 5 repeats from one start, 6 of 9 positions.</td></tr>
               <tr><th scope="row">Generated objects and lift test</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>7 requests in the browser: 5 lifted, 2 refused with numbers.</td></tr>
               <tr><th scope="row">Gravity menu</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Earth, Mars, Moon, Bennu, orbit. A cube dropped 0.10&nbsp;m landed in 0.354&nbsp;s on the Moon (theory 0.351&nbsp;s) and 0.144&nbsp;s on Earth (theory 0.143&nbsp;s).</td></tr>
@@ -374,14 +374,14 @@
               <tr><th scope="row">Contact at low gravity</th><td class="state"><span class="state-dot half" aria-hidden="true"></span>Simulated, unreliable</td><td>At Bennu gravity a 5 cm/s push lifted a resting cube 46.9&nbsp;mm: a solver artefact, not real physics. The receipt warns below 0.1&nbsp;m/s².</td></tr>
               <tr><th scope="row">Object requests</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works and tested</td><td>Gemini 3.8 Flash through a small key server: 5 of 5 replies in the right format in a live test, median 3867&nbsp;ms. That test checked the format only; the sizes returned did not always match the request. With no key, an offline keyword parser takes over, labelled on screen. The 7 requests in the object grid were run offline.</td></tr>
               <tr><th scope="row">Voice</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Works with a key; offline without</td><td>Hold-to-talk with the browser's speech recognition and an offline command grammar. With its key set, ElevenLabs speaks each reply: in a live check, 5 of 5 lines came back as audio, first audio after a median 176&nbsp;ms. Without the key, the browser's built-in voice speaks, labelled offline. Captions always.</td></tr>
-              <tr><th scope="row">Stop</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with scripted hands</td><td>Space freezes every joint and the jaw; only the on-screen Resume clears it. With <span class="mono">?hands=2</span>, both hands open held 0.4&nbsp;s also stops the arm: in tests it latched at 0.40&nbsp;s, and a 601-frame pinch-and-carry replay never set it off. <b>Not yet tried with a real hand.</b></td></tr>
+              <tr><th scope="row">Stop</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with scripted hands</td><td>Space freezes every joint and the jaw; only the on-screen Resume clears it. With <span class="mono">?hands=2</span>, both hands open held 0.4&nbsp;s also stops the arm: in tests it latched at 0.40&nbsp;s, and a 601-frame pinch-and-carry replay never set it off. <b>A real-hand try of the stop has not been logged.</b></td></tr>
               <tr><th scope="row">Earth-Moon delay</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>In Moon mode, commands reached the arm 1.28&nbsp;s late and the view another 1.28&nbsp;s, measured in the simulation.</td></tr>
               <tr><th scope="row">Ghost arm</th><td class="state"><span class="state-dot full" aria-hidden="true"></span>Built, tested with a scripted hand</td><td>Two simulations run side by side. The ghost assumes a rock of 1.6&nbsp;g/cm³ and friction 0.8 while the true arm hides 2.3&nbsp;g/cm³ and 0.6, so the two really disagree.</td></tr>
               <tr><th scope="row">Ghost result</th><td class="state"><span class="state-dot dash" aria-hidden="true"></span>Not measured yet</td><td>0 logged trials with a person; the trial logger is built. The pass rule was written before any data: with the ghost on, the median time must be at most 0.75 of the time with it off, with no fewer successes. One operator (me), so it will not generalise.</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="real-note reveal">The app's hard limits for objects (10 to 70&nbsp;mm wide, up to 300&nbsp;g) were set with a safety margin from grasp tests on the simulated arm. For flying by hand the app keeps a margin inside them, 15 to 55&nbsp;mm and 200&nbsp;g, chosen from an audit of the author's earlier SO-ARM100 projects (hand control is untested), and those are the limits the calculator and the refusals use. A real SO-ARM100's payload is unverified.</p>
+        <p class="real-note reveal">The app's hard limits for objects (10 to 70&nbsp;mm wide, up to 300&nbsp;g) were set with a safety margin from grasp tests on the simulated arm. For flying by hand the app keeps a margin inside them, 15 to 55&nbsp;mm and 200&nbsp;g, chosen from an audit of the author's earlier SO-ARM100 projects (not yet re-measured with real-hand control), and those are the limits the calculator and the refusals use. A real SO-ARM100's payload is unverified.</p>
       </div>
     </section>
 

@@ -13,7 +13,7 @@
     "fixer_round_2": "2026-11-07: Gemini corrected from 'offline mode, no call made' to the live gate result (gemini_gate_valid_specs, gemini_gate_median_ms, gemini_model_version); the 7 object-grid requests stay as run on the offline mock (S5 VERIFIED 17:52 EST, before the key was supplied at about 19:30). After the copy trim these facts are no longer shown on the page and are kept only for the record: ik_error_min_mm, ik_error_max_mm, rotex_delay_s, study_size_people, pinch_confirm_frames, mujoco_version.",
     "fixer_round_3": "2026-11-07 final fix: every PROGRESS citation rewritten from line numbers to row labels; unit tests 182 -> 201 (M4f VERIFIED 20:03, the newest full run); added unit_test_files, tracking_other_runs_ms, sheridan_year, bejczy_year, pick_clip_rise_mm, pick_clip_mass_g; ice refusal quoted at 9.81 (Earth) as the S5 rows say; Gemini 5/5 now carries its caveat (format only; sizes did not always match).",
     "fixer_round_4": "2026-11-07: calculator now follows guardrail.ts order (rescale on narrowest side and height, then weigh the rescaled object): added hand_height_max_mm, grip_height_min_mm, calc_rock_ref_narrow_mm, calc_part_ref_narrow_mm. Calculator friction now labelled by basis (design value or Engineering ToolBox, as in ice_friction/aluminium_friction status 'sourced'). Added the Stop row: stop_hold_s, stop_latch_s, stop_replay_frames (PROGRESS verdict 'M6 VERIFIED 19:29 EST'). The friction pick numbers 78.4 mm / 5.73 s / 0.37 s are the newer verified ones (S3 verifier through HandMapper, M1 VERIFIED s2-pick, EVID s2-repeat.json); HOW_IT_WORKS.md '## Friction grip' still quotes the older S2 builder run (78.2 mm, 5.65 s, 0.25 s) and is owned by another session.",
-    "gpu_names": "At the author's request the page names no GPU model: 'laptop GPU' and 'integrated GPU' stand in for the models named in the cited PROGRESS rows."
+    "gpu_names": "At the author's request the page names no GPU: speed numbers say only that they were measured in headless Chrome on a laptop; the cited PROGRESS rows name the hardware."
   },
   "facts": [
     {
@@ -119,7 +119,7 @@
       "id": "tracking_median_ms",
       "value": 11,
       "unit": "ms",
-      "measures": "median hand-tracking time per frame, fake camera, headless Chrome on the laptop GPU",
+      "measures": "median hand-tracking time per frame, fake camera, headless Chrome on the laptop",
       "denominator": "120 timed frames (max 17.5 ms)",
       "status": "verified",
       "source": "PROGRESS row 'S3 | verifier | 16:58 EST' (fake camera: 'median inference 11 ms (max 17.5, 120 samples, WebGL on laptop GPU)') and PROGRESS verdict 'S3 VERIFIED 16:58 EST' ('median 11 ms')"
@@ -245,7 +245,7 @@
       "id": "physics_fps",
       "value": 240,
       "unit": "frames/s",
-      "measures": "page frame rate (rendered frames per second) in headless Chrome on the laptop GPU; not the physics rate, which is physics_steps_per_s",
+      "measures": "page frame rate (rendered frames per second) in headless Chrome on the laptop; not the physics rate, which is physics_steps_per_s",
       "denominator": null,
       "status": "verified",
       "source": "PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('240 fps (>=50) on laptop GPU', headless Chrome); EVID m3-verify-r0/s5-gravity.json fps.fps = 240.02"
@@ -1253,7 +1253,7 @@
       "id": "tracking_other_runs_ms",
       "value": "17-26.6",
       "unit": "ms",
-      "measures": "median hand-tracking time in other fake-camera runs (not the 11 ms run) NOT SHOWN ON THE PAGE: runs differ in GPU (the 26.6 ms run used the integrated GPU, the 17 ms run the laptop GPU), so a single range would mislead.",
+      "measures": "median hand-tracking time in other fake-camera runs (not the 11 ms run) NOT SHOWN ON THE PAGE: runs differ in GPU (the 26.6 ms run used the laptop, the 17 ms run the laptop), so a single range would mislead.",
       "denominator": null,
       "status": "not-shown",
       "source": "PROGRESS row 'M1 | builder (Track A) | 18:27 EST' ('median tracking 17 ms (max 29.5, 112 samples, GPU, laptop GPU)'); PROGRESS row 'M1 | builder (Track A, addendum) | 18:33 EST' ('median tracking 17.7 ms (max 51.8, 119 samples)'); PROGRESS row 'S3 | builder | 16:33 EST' ('median inference 26.6 ms (max 67.3 ms, 98 samples)', on the integrated GPU per the S3 deviation 'inference times are headless Chrome on the integrated GPU')"
@@ -1298,7 +1298,7 @@
       "id": "test_gpu",
       "value": "laptop GPU",
       "unit": "GPU model",
-      "measures": "GPU of the machine where the 11 ms tracking median and the 240 frames per second were measured (headless Chrome; WebGL on the laptop GPU)",
+      "measures": "GPU of the machine where the 11 ms tracking median and the 240 frames per second were measured (headless Chrome; WebGL on the laptop)",
       "denominator": null,
       "status": "verified",
       "source": "PROGRESS row 'S3 | verifier | 16:58 EST' ('WebGL on laptop GPU') and PROGRESS verdict 'M3 VERIFIED 18:09 EST' ('240 fps (>=50) on laptop GPU')"
@@ -1401,6 +1401,15 @@
       "denominator": "5 lines",
       "status": "verified",
       "source": "PROGRESS '## Gate results', row '21:42 EST, ElevenLabs live gate' (5 lines through POST /api/tts: 5/5 audio/mpeg, no 4xx; first audio ms 445, 167, 166, 176, 184); README.md Voice row"
+    },
+    {
+      "id": "real_hand_tried",
+      "value": "yes",
+      "unit": "",
+      "measures": "the author steered the arm with his own hand through a laptop webcam and reports that it works; informal, no numbers were logged from that use",
+      "denominator": "None",
+      "status": "author-observed",
+      "source": "Ahmed in chat, 2026-11-07 about 21:59 EST: \"I already tried it it does works\""
     }
   ]
 }
