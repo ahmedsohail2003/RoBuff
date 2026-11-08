@@ -13,6 +13,10 @@ export class App {
   fps = 0;
   /** Simulated seconds per wall-clock second. Tests raise it to run long scripts faster. */
   speed = 1;
+  /** When set (the delay rig, M4), steps the simulations in place of loop.advance. */
+  physics: ((steps: number) => void) | null = null;
+  /** When set (the delay rig, M4), the body poses to draw in place of the live ones; null means live. */
+  viewPoses: (() => { xpos: Float64Array; xquat: Float64Array } | null) | null = null;
 
   private lastFrameMs: number | null = null;
   private owedSimSeconds = 0;
@@ -55,7 +59,8 @@ export class App {
     this.owedSimSeconds -= steps * this.sim.timestep;
 
     const physicsStart = performance.now();
-    this.loop.advance(steps);
+    if (this.physics) this.physics(steps);
+    else this.loop.advance(steps);
     this.lastPhysicsMs = performance.now() - physicsStart;
 
     this.syncAndRender();
@@ -65,7 +70,7 @@ export class App {
   };
 
   private syncAndRender(): void {
-    const { xpos, xquat } = this.sim.bodyPoses();
+    const { xpos, xquat } = this.viewPoses?.() ?? this.sim.bodyPoses();
     this.viewport.syncBodies(xpos, xquat);
     this.viewport.render();
   }
