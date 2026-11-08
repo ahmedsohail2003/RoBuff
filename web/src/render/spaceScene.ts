@@ -1,10 +1,13 @@
 // The deep-space look: a dark sky, one point-cloud starfield (a single THREE.Points, so one
-// draw call), the floor as grey regolith with a faint grid, and a cool key light. It only
-// restyles what the viewport already drew; physics is untouched. No Earth or Moon backdrop:
-// no NASA texture is vendored in this build.
+// draw call), the floor as lunar regolith with a faint grid (render/lunarFloor.ts: procedural
+// texture, ground that fades into the stars, a small procedural Earth), the Robuff mission
+// patch on the arm (render/missionPatch.ts), and a cool key light. It only restyles what the
+// viewport already drew; physics is untouched. No image files: everything is drawn in code.
 
 import * as THREE from 'three';
 import { createRng, randomUnit, range } from '../objects/rng';
+import { dressLunarGround } from './lunarFloor';
+import { attachMissionPatch } from './missionPatch';
 import type { Viewport } from './viewport';
 
 export const STAR_COUNT = 8000;
@@ -83,9 +86,11 @@ export function applySpaceScene(viewport: Viewport): SpaceScene {
   grid.position.z = 0.0005;
   const gridMaterial = grid.material as THREE.LineBasicMaterial;
   gridMaterial.transparent = true;
-  gridMaterial.opacity = 0.18;
+  gridMaterial.opacity = 0.07;
   gridMaterial.depthWrite = false;
   scene.add(grid);
+  dressLunarGround(viewport);
+  attachMissionPatch(viewport);
 
   const stars = starfield();
   scene.add(stars);
