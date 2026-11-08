@@ -6,7 +6,7 @@ export const DEFAULT_LIMITS = Object.freeze({
   specPerDay: 300,
   ttsCharsPerDay: 20000,
   /** Nano Banana skin images, in units: a 'fast' image costs 1, a 'high' (Pro) image costs 4. */
-  imagePerDay: 40,
+  imagePerDay: 100,
 });
 
 /** Local calendar day, so the daily caps reset at the server's midnight. */

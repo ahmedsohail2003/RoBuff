@@ -30,6 +30,22 @@ const MIME = Object.freeze({ jpg: 'image/jpeg', png: 'image/png', webp: 'image/w
 export const SKIN_FILE_ROUTE = /^\/api\/skin\/([0-9a-f]{64})\.(jpg|png|webp)$/;
 const FALLBACK = 'so the app paints a procedural skin instead';
 
+/**
+ * The words a skin is drawn and cached by: lowercase, spaces collapsed, trailing punctuation and
+ * one leading article (a, an, the) dropped. Voice drops "a" where typing keeps it, so both spellings
+ * of one look must share one image and one payment. web/src/render/skinSource.ts does the same.
+ */
+export function normaliseSkinText(raw) {
+  return String(raw ?? '')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s.,;:!?…]+$/u, '')
+    .replace(/^(a|an|the)\s+/, '')
+    .trim();
+}
+
 /** The only prompt the image model ever sees. The description is the operator's words. */
 export function skinPrompt(description) {
   return `A seamless, tileable texture swatch of ${description}. Flat and evenly lit, seen straight on, filling the whole square edge to edge. No objects, no shadows, no text, no logos, no border.`;
@@ -222,8 +238,8 @@ export function createSkinRoutes(options) {
     if (!limits.allowRequest(ip)) throw new SkinError(429, 'Too many requests: the limit is 30 a minute. Try again shortly.');
     const body = await readJson(req);
     const raw = typeof body?.text === 'string' ? body.text : '';
-    // Control characters out, spaces collapsed: the description is a few plain words.
-    const text = raw.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    // Control characters out, spaces collapsed, case, end punctuation and one article dropped.
+    const text = normaliseSkinText(raw);
     if (!text) throw new SkinError(400, 'Send JSON with a non-empty "text" describing the skin.');
     if (text.length > SKIN_MAX_CHARS) throw new SkinError(400, `"text" is ${text.length} characters; the limit is ${SKIN_MAX_CHARS}.`);
     const quality = body?.quality === undefined || body?.quality === null ? 'fast' : body.quality;

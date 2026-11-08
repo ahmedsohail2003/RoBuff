@@ -7,7 +7,7 @@ import path from 'node:path';
 import { after, test } from 'node:test';
 import { createAppServer } from '../index.mjs';
 import { createLimits } from '../limits.mjs';
-import { imageSize, pickImage, SKIN_MODELS, skinCacheKey, skinPrompt, sniffImage } from '../skin.mjs';
+import { imageSize, normaliseSkinText, pickImage, SKIN_MODELS, skinCacheKey, skinPrompt, sniffImage } from '../skin.mjs';
 
 const NO_KEYS = { geminiKey: '', elevenKey: '', voiceId: '', allowedOrigins: [] };
 const FAKE_KEYS = { geminiKey: 'test-gemini-value', elevenKey: '', voiceId: '', allowedOrigins: [] };
@@ -116,7 +116,7 @@ test('a miss then a hit: one upstream call, the key only in a header, the file s
   assert.equal(call.init.headers['x-goog-api-key'], 'test-gemini-value');
   assert.ok(!call.url.includes('test-gemini-value'), 'the key is never in the URL');
   assert.ok(!call.init.body.includes('test-gemini-value'), 'the key is never in the body');
-  assert.equal(call.body.contents[0].parts[0].text, skinPrompt('a swirling purple galaxy nebula'), 'spaces collapsed, then wrapped by the server');
+  assert.equal(call.body.contents[0].parts[0].text, skinPrompt('swirling purple galaxy nebula'), 'spaces collapsed and the article dropped, then wrapped by the server');
   assert.deepEqual(call.body.generationConfig, { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } }, 'Lite gets no imageSize');
 
   const second = await post(base, { text: 'a swirling purple galaxy nebula' });
@@ -139,11 +139,33 @@ test('a miss then a hit: one upstream call, the key only in a header, the file s
   assert.equal(health.models.skin_high, 'gemini-3-pro-image');
   assert.equal(health.limits.image_calls_today, 1, 'the hit was free');
   assert.equal(health.limits.image_units_today, 1);
-  assert.equal(health.limits.image_units_per_day, 40);
+  assert.equal(health.limits.image_units_per_day, 100);
   const everything = JSON.stringify([a, b, health, lines]);
   assert.ok(!everything.includes('test-gemini-value'), 'the key never comes back or reaches the log');
   assert.ok(!everything.includes('SIGSIG'), 'thoughtSignature is never forwarded or logged');
   assert.ok(lines.some((l) => l.startsWith('POST /api/skin 200')));
+});
+
+test('the skin text is normalised before the prompt and the cache key: case, spaces, one article, end punctuation', () => {
+  assert.equal(normaliseSkinText('A Swirling purple galaxy nebula.'), 'swirling purple galaxy nebula');
+  assert.equal(normaliseSkinText('  the   Brushed GOLD!! '), 'brushed gold');
+  assert.equal(normaliseSkinText('an oak wood grain?'), 'oak wood grain');
+  assert.equal(normaliseSkinText('a a cat'), 'a cat', 'only one leading article is dropped');
+  assert.equal(normaliseSkinText('an'), 'an', 'a lone word is kept');
+  assert.equal(normaliseSkinText('brushed gold, with fine scratches'), 'brushed gold, with fine scratches', 'inner punctuation stays');
+});
+
+test('"A Swirling purple galaxy nebula." and "swirling purple galaxy nebula" make ONE upstream call', async () => {
+  const google = fakeGoogle();
+  const { base } = await start({ config: FAKE_KEYS, fetchImpl: google.fetchImpl });
+  const a = await (await post(base, { text: 'A Swirling purple galaxy nebula.', quality: 'high' })).json();
+  const b = await (await post(base, { text: 'swirling purple galaxy nebula', quality: 'high' })).json();
+  assert.equal(google.calls.length, 1, 'the second spelling is a cache hit');
+  assert.deepEqual([a.cache, b.cache], ['miss', 'hit']);
+  assert.equal(a.url, b.url);
+  assert.equal(google.calls[0].body.contents[0].parts[0].text, skinPrompt('swirling purple galaxy nebula'));
+  const health = await (await fetch(`${base}/api/health`)).json();
+  assert.equal(health.limits.image_units_today, 4, 'one Pro image paid, not two');
 });
 
 test('identical calls in flight share one upstream request and one unit of the cap', async () => {

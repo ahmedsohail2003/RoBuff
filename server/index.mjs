@@ -27,6 +27,8 @@ const BODY_MAX_BYTES = 4096;
 const UPSTREAM_TIMEOUT_MS = 10_000;
 /** A spec with parts is a longer answer: measured 7.9 to 9.9 s live (2026-11-07), and one plane request passed 10 s. */
 const SPEC_TIMEOUT_MS = 20_000;
+/** Live talk: one of four live chat calls passed 10 s (2026-11-08), so chat gets 20 s. ElevenLabs keeps 10 s. */
+export const CHAT_TIMEOUT_MS = 20_000;
 
 export const COMMAND_SCHEMA = JSON.parse(readFileSync(path.join(HERE, 'commandSchema.json'), 'utf8'));
 const SPEC_FIELDS = ['kind', 'name', 'width_mm', 'depth_mm', 'height_mm', 'roughness', 'lumpiness', 'seed', 'material', 'color', 'parts', 'why'];
@@ -351,7 +353,7 @@ function chatPrompt(body, text) {
 }
 
 /** One Gemini structured-output call for live talk. Returns the parsed JSON object. */
-async function askGeminiChat(key, prompt, fetchImpl) {
+async function askGeminiChat(key, prompt, fetchImpl, timeoutMs = CHAT_TIMEOUT_MS) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const call = (generationConfig) =>
     fetchImpl(url, {
@@ -362,7 +364,7 @@ async function askGeminiChat(key, prompt, fetchImpl) {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig,
       }),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   // A higher temperature than the spec call: the replies should not sound the same every time.
   let res = await call({ responseMimeType: 'application/json', responseJsonSchema: jsonSchemaVariant(CHAT_SCHEMA), temperature: 0.8 });
@@ -380,7 +382,7 @@ async function askGeminiChat(key, prompt, fetchImpl) {
 
 /**
  * @param {{ config?: ReturnType<typeof loadConfig>, limits?: ReturnType<typeof createLimits>, fetchImpl?: typeof fetch,
- *   cacheDir?: string, skinCacheDir?: string, log?: (line: string) => void }} [options]
+ *   cacheDir?: string, skinCacheDir?: string, chatTimeoutMs?: number, log?: (line: string) => void }} [options]
  */
 export function createAppServer(options = {}) {
   const config = options.config ?? loadConfig();
@@ -388,6 +390,7 @@ export function createAppServer(options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const cacheDir = options.cacheDir ?? path.join(HERE, '..', 'web', '.voice-cache');
   const log = options.log ?? ((line) => console.log(line));
+  const chatTimeoutMs = options.chatTimeoutMs ?? CHAT_TIMEOUT_MS;
   const gemini = config.geminiKey ? 'configured' : 'missing';
   const elevenlabs = config.elevenKey && config.voiceId ? 'configured' : 'missing';
   const skin = createSkinRoutes({ config, limits, fetchImpl, cacheDir: options.skinCacheDir });
@@ -422,7 +425,7 @@ export function createAppServer(options = {}) {
     const text = requestText(body, SPEC_MAX_CHARS);
     if (!limits.takeSpec()) throw new HttpError(429, "Today's Gemini cap is used up, so live talk knows only the offline commands until midnight.");
     const t0 = performance.now();
-    const raw = await askGeminiChat(config.geminiKey, chatPrompt(body, text), fetchImpl);
+    const raw = await askGeminiChat(config.geminiKey, chatPrompt(body, text), fetchImpl, chatTimeoutMs);
     const latency_ms = Math.round(performance.now() - t0);
     const reply = clipReply(raw?.reply);
     if (!reply) throw new HttpError(502, 'Gemini sent no reply, so live talk knows only the offline commands for now.');

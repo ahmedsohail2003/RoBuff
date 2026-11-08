@@ -287,3 +287,31 @@ test('the chat action list and move directions match the browser (web/src/voice/
   assert.deepEqual(list('CHAT_MOVE_DIRECTIONS'), CHAT_MOVE_DIRECTIONS);
   assert.equal(Number(/export const CHAT_MAX_ACTIONS = (\d+)/.exec(source)?.[1]), CHAT_MAX_ACTIONS);
 });
+
+test('chat waits CHAT_TIMEOUT_MS (20 s, over the shared 10 s), then a hung Gemini is a 504; the browser waits longer', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { CHAT_TIMEOUT_MS } = await import('../index.mjs');
+  assert.equal(CHAT_TIMEOUT_MS, 20_000);
+  // A Gemini that never answers until its signal fires. The server's wait is shortened here only so the test is quick.
+  let aborted = null;
+  const fetchImpl = (url, init) =>
+    new Promise((_, reject) => {
+      init.signal.addEventListener('abort', () => {
+        aborted = init.signal.reason?.name ?? 'aborted';
+        reject(init.signal.reason);
+      });
+    });
+  const { base, lines } = await start({ config: FAKE_KEYS, fetchImpl, chatTimeoutMs: 60 });
+  const t0 = performance.now();
+  const res = await post(base, '/api/chat', { text: 'tell me a long story', history: [], state: { mode: 'direct', gravity: 'earth', lastObject: null, stopped: false } });
+  const ms = performance.now() - t0;
+  assert.equal(res.status, 504);
+  assert.match(await res.text(), /timed out/);
+  assert.equal(aborted, 'TimeoutError');
+  assert.ok(ms >= 50 && ms < 5000, `answered after ${Math.round(ms)} ms`);
+  assert.ok(lines.some((l) => l.startsWith('POST /api/chat 504')));
+  // The browser's own chat timeout must be longer, so the server's plain answer arrives first.
+  const source = readFileSync(new URL('../../web/src/voice/liveTalk.ts', import.meta.url), 'utf8');
+  const browserMs = Number(/private readonly timeoutMs = ([\d_]+)/.exec(source)?.[1].replace(/_/g, ''));
+  assert.ok(browserMs > CHAT_TIMEOUT_MS, `browser ${browserMs} ms must exceed the server's ${CHAT_TIMEOUT_MS} ms`);
+});
