@@ -262,12 +262,12 @@
     },
     {
       "id": "unit_tests_passed",
-      "value": 378,
+      "value": 381,
       "unit": "tests",
       "measures": "unit tests passed in the newest full verified run (npm test, Vitest), all of them",
-      "denominator": "378 of 378, in 46 test files",
+      "denominator": "381 of 381, in 46 test files",
       "status": "verified",
-      "source": "PROGRESS verdict 'skins VERIFIED 04:09 EST' ('full npm test (lock) 46 files 378 passed exit 0'); earlier count 201 of 201 in 31 files at PROGRESS verdict 'M4f VERIFIED 20:03 EST'"
+      "source": "README.md 'What the tests showed' at 30ac341 (fresh copy of the final commit c40ec1e, tested with no keys by an agent that did not write the code: 381 unit tests in 46 files, 27 of 27 key server tests); 378 in 46 files at PROGRESS verdict 'skins VERIFIED 04:09 EST'"
     },
     {
       "id": "pick_rise_mm",
@@ -1544,21 +1544,51 @@
     },
     {
       "id": "skin_pro_new_s",
-      "value": 12.5,
+      "value": "12.1 to 12.9",
       "unit": "s",
-      "measures": "time to draw a new skin picture with Nano Banana Pro (gemini-3-pro-image), one live run (12461 ms)",
+      "measures": "time to draw a new skin picture with Nano Banana Pro (gemini-3-pro-image), three builder draws: 12.1, 12.5 and 12.9 s",
       "denominator": null,
       "status": "measured-builder",
-      "source": "PROGRESS 'skins | builder | 02:41 EST' ('Pro miss 12461 ms') and 'skins | fixer r2 | 03:58 EST' ('first drawn in 12.5 s'); skins VERIFIED 04:09 did not repeat live paid calls"
+      "source": "README.md 'What the tests showed' at 30ac341 ('Builder-tested only ... Three fresh High quality (Pro) pictures took 12.1, 12.5 and 12.9 s'); PROGRESS 'skins | builder | 02:41 EST' (12461 ms)"
     },
     {
       "id": "skin_lite_new_s",
       "value": "3.1 to 4.5",
       "unit": "s",
-      "measures": "time to draw a new skin picture with Nano Banana 2 Lite (gemini-3.1-flash-lite-image) in three live runs: 3097 ms (Tesla galaxy), 3447 ms (brushed gold), 4505 ms drawn (galaxy, integration run)",
+      "measures": "time to draw a new skin picture with Nano Banana 2 Lite (gemini-3.1-flash-lite-image), six builder draws",
       "denominator": null,
       "status": "measured-builder",
-      "source": "PROGRESS 'skins | builder | 02:41 EST' ('Tesla galaxy Lite miss 3097 ms', 'AK-47 brushed gold Lite miss 3447 ms'); EVID integration-voice-skins.json (drawnMs 4505)"
+      "source": "README.md 'What the tests showed' at 30ac341 ('six fresh Fast pictures took 3.1 to 4.5 s'); PROGRESS 'skins | builder | 02:41 EST'; EVID integration-voice-skins.json (drawnMs 4505)"
+    },
+    {
+      "id": "skin_daily_cap",
+      "value": {
+        "pro": 25,
+        "lite": 100
+      },
+      "unit": "pictures a day",
+      "measures": "the key server caps new pictures at 100 units a day: a Lite (Fast) picture costs 1 unit and a Pro (High quality) picture 4, so 100 Lite or 25 Pro pictures; cache hits are free",
+      "denominator": null,
+      "status": "design",
+      "source": "README.md at 30ac341 (Nano Banana cost paragraph); commits b70db06 and c40ec1e"
+    },
+    {
+      "id": "gemini_chat_wait_s",
+      "value": "5 to 7",
+      "unit": "s",
+      "measures": "how long a spoken line that goes to Gemini is silent while Gemini answers",
+      "denominator": null,
+      "status": "measured-builder",
+      "source": "README.md at 30ac341 (voice motion limits paragraph: 'silent for about 5 to 7 s while Gemini answers'); PROGRESS voice-motion fixer r2 note (about 7 s)"
+    },
+    {
+      "id": "skin_default_quality",
+      "value": "Nano Banana Pro",
+      "unit": "",
+      "measures": "the default skin quality (High quality); Nano Banana 2 Lite (Fast) is the other choice",
+      "denominator": null,
+      "status": "design",
+      "source": "commit c40ec1e (DEFAULT_SKIN_QUALITY 'high' in web/src/render/skinSource.ts); README.md at 30ac341"
     }
   ]
 }
