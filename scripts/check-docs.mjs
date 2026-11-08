@@ -103,8 +103,8 @@ if (readme !== null) {
     }
   }
   if (linesMatching(readme, 'SIMULATION') < 1) problems.push('README.md never says SIMULATION');
-  const spirit = linesMatching(readme, 'New for the author');
-  if (spirit !== 1) problems.push(`README.md has ${spirit} "New for the author" lines, expected 1`);
+  const placeholders = linesMatching(readme, '[AHMED');
+  if (placeholders > 0) problems.push(`README.md has ${placeholders} unfilled "[AHMED ...]" placeholder lines`);
   const privacy = linesMatching(readme, 'No camera frames leave');
   if (privacy !== 1) problems.push(`README.md has ${privacy} "No camera frames leave" lines, expected 1`);
   if (!readme.includes('in a keyword scan of 755 saved UB Hacking entries we found none')) {
