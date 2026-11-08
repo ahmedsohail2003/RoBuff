@@ -1,0 +1,37 @@
+# Publishes the Robuff project page (the static files in site/) with GitHub Pages.
+# Runs on every push to main that changes site/, and by hand from the Actions tab.
+# One-time setup on GitHub: Settings > Pages > Source: "GitHub Actions".
+# The page then lives at https://ahmedsohail2003.github.io/buffalo-hackathon-2/
+name: Publish the project page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v5
