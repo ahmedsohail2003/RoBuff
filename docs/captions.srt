@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:10,590
+SIMULATION. Direct mode: a scripted virtual hand (test input, no person) drives the simulated arm. It grips the rock by friction physics.
+
+2
+00:00:10,640 --> 00:00:20,510
+Moon, ghost off: a simulated 2.56 s round trip. A mouse pinch reaches the arm 1.28 s later and shows on screen 2.56 s later. It closes on nothing.
+
+3
+00:00:20,560 --> 00:00:29,930
+Moon, ghost on: the see-through ghost is a second simulation that answers at once. The true arm follows 1.28 s later and lifts the rock.
+
+4
+00:00:29,980 --> 00:00:38,540
+Typed to the voice console: "give me a Bennu sample". Gemini proposes the spec and the receipt says so; code checks it and runs a simulated lift test.
+
+5
+00:00:38,590 --> 00:00:47,270
+"An asteroid the size of Texas": refused at full size with numbers (the jaw opens about 70 mm), then rescaled to a model and lift-tested.
+
+6
+00:00:47,320 --> 00:00:54,590
+Bennu gravity, 8.3e-5 m/s2, calculated from JPL data, spin ignored: the released rock is still hanging above the pad seconds later.
+
+7
+00:00:54,640 --> 00:01:00,870
+Results: the ghost test is not yet measured. 0 logged trials, so no claim about the ghost.
+
+8
+00:01:00,920 --> 00:01:07,680
+Every simulated and mocked part is labelled. Built this weekend from an empty repo. Backup recording with scripted input and no narration.
