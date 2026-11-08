@@ -58,7 +58,7 @@ export const lines = {
   tooWide(acrossMm: number, narrowMm: number, limitMm: number, hardMm: number, bandName: string, finalNarrowMm: number, finalAcrossMm: number): string {
     const narrow = narrowMm < acrossMm * 0.98 ? `, ${say(narrowMm)} at its narrowest` : '';
     const limit = limitMm < hardMm ? `My jaw opens about ${say(hardMm)} millimetres, and I keep ${bandName} objects to ${say(limitMm)}.` : `My jaw opens about ${say(limitMm)} millimetres.`;
-    return `That's ${sayLength(acrossMm)} across${narrow}. ${limit} I'll make a ${say(finalNarrowMm)} millimetre model of it, ${say(finalAcrossMm)} across, same proportions.`;
+    return `That's ${sayLength(acrossMm)} across${narrow}. ${limit} I'll make a model of it ${say(finalNarrowMm)} millimetres at its narrowest and ${say(finalAcrossMm)} at its widest, same proportions.`;
   },
   tooSmall(narrowMm: number, limitMm: number, finalNarrowMm: number): string {
     return `That's only ${say(narrowMm)} millimetres at its narrowest. My jaw needs at least ${say(limitMm)} to get a grip. I'll make it ${say(finalNarrowMm)}, same proportions.`;

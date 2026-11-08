@@ -204,7 +204,7 @@ function sizeText(receipt: Receipt): string {
   const settled = receipt.rest?.narrow_width_mm ?? null;
   const grams = receipt.mass_kg !== null ? `${say(receipt.mass_kg * 1000)} grams` : null;
   if (settled !== null && planned !== null && say(settled) !== say(planned)) {
-    return `${grams ? `${grams}. ` : ''}After it settled it measured ${say(settled)} millimetres across.`;
+    return `${grams ? `${grams}. ` : ''}After it settled it measured ${say(settled)} millimetres at its narrowest.`;
   }
   const width = settled ?? planned;
   return `${width !== null ? `${say(width)} millimetres across` : 'made'}${grams ? `, ${grams}` : ''}.`;
