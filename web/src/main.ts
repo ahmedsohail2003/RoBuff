@@ -72,7 +72,11 @@ async function main(): Promise<void> {
     if (import.meta.env.DEV || import.meta.env.MODE === 'test') installTestHooks(app, overlay);
     if (import.meta.env.DEV || import.meta.env.MODE === 'test') appStates.installHooks();
     const webcam = loop.source;
-    if (webcam instanceof WebcamSource) appStates.showCameraIntro(webcam, () => void appStates.startWebcam(webcam));
+    if (webcam instanceof WebcamSource) {
+      // The console's "Turn on camera" button reloads with ?autostart=1: the person already chose the camera.
+      if (new URLSearchParams(location.search).get('autostart') === '1') void appStates.startWebcam(webcam);
+      else appStates.showCameraIntro(webcam, () => void appStates.startWebcam(webcam));
+    }
     mountSpaceAndGravity(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     const delayRig = mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test');

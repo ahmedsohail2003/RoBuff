@@ -85,6 +85,9 @@ body.console-layout #stop-banner button, body.console-layout #camera-intro butto
 #console kbd { font: 600 11px ui-monospace, Consolas, monospace; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 #console button { font: inherit; color: var(--text); background: #1d2850; border: 1px solid #3a466e; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
 #console button:disabled { cursor: default; }
+#console .head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#console #camera-toggle { background: #f2c14e; color: #0b1020; border-color: #f2c14e; font-weight: 600; white-space: nowrap; padding: 5px 10px; }
+#console #camera-toggle[aria-pressed="true"] { background: #1d2850; color: var(--text); border-color: #3a466e; font-weight: 500; }
 #console #trial-toggle { margin-top: 6px; }
 #console #trial-toggle[aria-pressed="true"] { border-color: var(--accent); }
 #console .slot-head { margin: 0 0 4px; font-size: 13px; }

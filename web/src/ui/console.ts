@@ -77,6 +77,36 @@ function hintSeen(): boolean {
   }
 }
 
+/**
+ * The top-right camera switch. In mouse (or synthetic) input it reads "Turn on camera" and
+ * reloads with ?input=webcam&autostart=1, so the camera starts at once: the click is the
+ * person's choice. In webcam input it offers the mouse instead. A reload keeps one input path.
+ */
+function makeCameraToggle(app: App): HTMLButtonElement {
+  const button = el('button', { type: 'button', id: 'camera-toggle', 'data-testid': 'camera-toggle' });
+  const refresh = (): void => {
+    const on = app.loop.source?.kind === 'webcam';
+    const label = on ? 'Camera on · use mouse' : 'Turn on camera';
+    if (button.textContent !== label) button.textContent = label;
+    button.setAttribute('aria-pressed', String(on));
+    button.title = on ? 'Reloads the page with the mouse as input.' : 'Reloads the page with your webcam as input and starts it right away.';
+  };
+  refresh();
+  setInterval(refresh, 500);
+  button.addEventListener('click', () => {
+    const params = new URLSearchParams(location.search);
+    if (app.loop.source?.kind === 'webcam') {
+      params.set('input', 'mouse');
+      params.delete('autostart');
+    } else {
+      params.set('input', 'webcam');
+      params.set('autostart', '1');
+    }
+    location.search = params.toString();
+  });
+  return button;
+}
+
 /** The one init call for M7. rig is the delay rig from mountDelay (null if it is not mounted). */
 export function mountConsole(app: App, rig: DelayRig | null, withHooks: boolean): void {
   document.body.classList.add('console-layout');
@@ -86,6 +116,8 @@ export function mountConsole(app: App, rig: DelayRig | null, withHooks: boolean)
   const header = el('header', { class: 'console-head' });
   const title = el('h1', {}, 'RoBuff');
   title.appendChild(el('span', { class: 'sub' }, 'mission console · simulation'));
+  const headRow = el('div', { class: 'head-row' });
+  headRow.append(title, makeCameraToggle(app));
   const keys = el('p', { class: 'keys', 'data-testid': 'console-keys' });
   keys.innerHTML =
     '<kbd>Space</kbd> stop · <kbd>G</kbd> gravity · <kbd>M</kbd> mode · <kbd>V</kbd> hold to talk · <kbd>Tab</kbd> moves through controls, <kbd>Enter</kbd> presses one';
@@ -99,7 +131,7 @@ export function mountConsole(app: App, rig: DelayRig | null, withHooks: boolean)
     else params.set('trial', '1');
     location.search = params.toString();
   });
-  header.append(title, keys, keysNote, trialToggle);
+  header.append(headRow, keys, keysNote, trialToggle);
   aside.appendChild(header);
 
   let hintShown = false;
