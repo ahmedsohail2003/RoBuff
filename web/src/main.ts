@@ -20,6 +20,7 @@ import { AppStates, chooseInputKind } from './ui/states';
 import { mountSpaceAndGravity } from './ui/gravityMenu';
 import { mountDelay } from './delay/mountDelay';
 import { mountVoice } from './voice/pushToTalk';
+import { mountStopGesture } from './safety/mountStopGesture';
 
 function element(id: string): HTMLElement {
   const found = document.getElementById(id);
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
     mountSpaceAndGravity(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
+    mountStopGesture(app, webcam, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountObjectPanel(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test').catch((error: unknown) => {
       showNotice(`The object panel could not start: ${error instanceof Error ? error.message : String(error)}`);
     });
