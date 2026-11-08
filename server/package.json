@@ -1,9 +1,9 @@
 {
-  "name": "aftergrip-key-server",
+  "name": "robuff-key-server",
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Holds the Gemini and ElevenLabs keys for the Aftergrip web app. No dependencies.",
+  "description": "Holds the Gemini and ElevenLabs keys for the Robuff web app. No dependencies.",
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node index.mjs",

@@ -1,4 +1,4 @@
-# How Aftergrip works
+# How Robuff works
 
 One page, one part per section. Every number below came from a test or a measurement run on this laptop on 2026-11-07 (Windows 11, headless Chrome, an RTX 4050 or the Intel Iris Xe where noted). Everything here is a SIMULATION: there is no real robot. Parts that are not built yet say so.
 
@@ -34,7 +34,7 @@ Space stops the arm. The stop latch then sends no new commands, so every joint a
 
 ### Is this new work? Haven't you built robot arms before?
 
-Yes, I have built related projects: the WorkCell series, EmberHacks "The cell" (submitted to another event) and HandSignal. None of their code is here. Every line of application code in this repo was written during UB Hacking 2026, and the commit history starts after hacking opened. What carries over is what I learned, plus public libraries and the same public arm model (MuJoCo Menagerie's SO-ARM100), all listed in [THIRD_PARTY.md](THIRD_PARTY.md). EmberHacks was a robot cell you instruct by voice, with no physics; Aftergrip is your own hand reaching an arm through contact physics, light delay and low gravity.
+Yes, I have built related projects: the WorkCell series, EmberHacks "The cell" (submitted to another event) and HandSignal. None of their code is here. Every line of application code in this repo was written during UB Hacking 2026, and the commit history starts after hacking opened. What carries over is what I learned, plus public libraries and the same public arm model (MuJoCo Menagerie's SO-ARM100), all listed in [THIRD_PARTY.md](THIRD_PARTY.md). EmberHacks was a robot cell you instruct by voice, with no physics; Robuff is your own hand reaching an arm through contact physics, light delay and low gravity.
 
 ### Your ghost is a simulation predicting a simulation. Of course it matches.
 

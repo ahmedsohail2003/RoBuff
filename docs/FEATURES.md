@@ -1,4 +1,4 @@
-# Aftergrip feature inventory
+# Robuff feature inventory
 
 Every feature in the app, the test that checks it, and the demo-video beat that shows it (times from the video plan in [slides/teleprompter.html](../slides/teleprompter.html)), or "not shown". Status as of 2026-11-07 19:45 EST, before the 21:30 feature freeze: "verified" means an independent re-run of the milestone's acceptance test passed; "built" means its own test passed and the re-check has not run yet; "in progress" means it is still being written. Everything here is a SIMULATION: there is no real robot.
 

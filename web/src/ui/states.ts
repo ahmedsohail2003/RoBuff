@@ -72,6 +72,9 @@ export function trackerLine(state: TrackerState, warmupMs: number | null): strin
   }
 }
 
+/** What the mouse does, for the status line. */
+export const MOUSE_HINT = 'move to steer, W/S reach, left click or G grip, right drag orbits';
+
 function describeInput(app: App): string {
   const source = app.loop.source;
   if (!source) return 'input: direct commands';
@@ -79,7 +82,7 @@ function describeInput(app: App): string {
   if (source.kind === 'synthetic') return `input: synthetic hand, ${String(info.phase ?? 'starting')}`;
   if (source.kind === 'webcam') return `input: webcam, ${String(info.state)}`;
   if (info.note) return `input: ${String(info.note)}`;
-  return 'input: mouse (move to steer, W/S reach, G grip)';
+  return `input: mouse (${MOUSE_HINT})`;
 }
 
 function gripWord(app: App): string {
@@ -176,7 +179,7 @@ export class AppStates {
     document.getElementById('camera-intro')?.remove();
     const box = el('div', { id: 'camera-intro', role: 'dialog', 'aria-label': 'Camera' });
     box.append(
-      el('p', {}, 'Aftergrip follows one hand with your camera: move your hand to steer the arm, pinch thumb and index finger to grip. The video stays on this computer; nothing is uploaded.'),
+      el('p', {}, 'Robuff follows one hand with your camera: move your hand to steer the arm, pinch thumb and index finger to grip. The video stays on this computer; nothing is uploaded.'),
     );
     const line = el('p', { id: 'tracker-line' }, trackerLine(source.trackerState, source.warmupMs));
     box.append(line);
@@ -189,7 +192,7 @@ export class AppStates {
     });
     mouse.addEventListener('click', () => {
       box.remove();
-      this.useMouse('mouse (chosen on the start screen); move to steer, W/S reach, G grip');
+      this.useMouse(`mouse (chosen on the start screen); ${MOUSE_HINT}`);
     });
     buttons.append(useCamera, mouse);
     box.append(buttons);
@@ -209,7 +212,7 @@ export class AppStates {
     const state = await source.start();
     if (state === 'running') return;
     showNotice(`${source.message ?? 'The camera is not available.'} You can steer the arm with the mouse instead.`, [
-      { label: 'Use mouse instead', run: () => this.useMouse('mouse (camera unavailable); move to steer, W/S reach, G grip') },
+      { label: 'Use mouse instead', run: () => this.useMouse(`mouse (camera unavailable); ${MOUSE_HINT}`) },
     ]);
   }
 

@@ -18,7 +18,7 @@ export type VoiceAction =
   | { type: 'unknown'; text: string };
 
 /** Words that carry no command: dropped before matching. */
-const FILLER = new Set(['please', 'now', 'hey', 'ok', 'okay', 'aftergrip', 'arm', 'the', 'robot', 'thanks', 'thank', 'you', 'go', 'to', 'set', 'switch', 'turn', 'mode', 'gravity', 'and']);
+const FILLER = new Set(['please', 'now', 'hey', 'ok', 'okay', 'robuff', 'aftergrip', 'arm', 'the', 'robot', 'thanks', 'thank', 'you', 'go', 'to', 'set', 'switch', 'turn', 'mode', 'gravity', 'and']);
 
 /** Lower case, punctuation to spaces, single spaces. */
 export function normalizeUtterance(text: string): string {
@@ -31,7 +31,7 @@ export function normalizeUtterance(text: string): string {
 
 const STOP_WORDS = /\b(stop|halt|freeze|abort)\b/;
 /** Object requests: the rest of the line is the description. */
-const OBJECT_PREFIX = /^(?:(?:please|hey|ok|okay|aftergrip|can you|could you|i want|i'd like|i would like)\s+)*(?:make|spawn|give me|create|build|fabricate|print|generate)\b\s*(?:me\s+)?(.*)$/;
+const OBJECT_PREFIX = /^(?:(?:please|hey|ok|okay|robuff|aftergrip|can you|could you|i want|i'd like|i would like)\s+)*(?:make|spawn|give me|create|build|fabricate|print|generate)\b\s*(?:me\s+)?(.*)$/;
 
 const GRAVITY_WORDS: [RegExp, GravityId][] = [
   [/^(earth|earth normal|one g|1 g)$/, 'earth'],

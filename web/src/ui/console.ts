@@ -84,7 +84,7 @@ export function mountConsole(app: App, rig: DelayRig | null, withHooks: boolean)
   // The console column.
   const aside = el('aside', { id: 'console', 'aria-label': 'Mission console' });
   const header = el('header', { class: 'console-head' });
-  const title = el('h1', {}, 'Aftergrip');
+  const title = el('h1', {}, 'Robuff');
   title.appendChild(el('span', { class: 'sub' }, 'mission console · simulation'));
   const keys = el('p', { class: 'keys', 'data-testid': 'console-keys' });
   keys.innerHTML =

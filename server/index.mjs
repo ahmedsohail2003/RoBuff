@@ -31,8 +31,18 @@ const SYSTEM_PROMPT = [
   'intent set_gravity: they want Earth, Mars, Moon, Bennu or orbit gravity; put it in gravity.',
   'intent home: send the arm to its home pose. intent help: they ask what they can say. intent none: anything else.',
   'You can never stop or resume the arm; the browser handles stop itself. For any intent but spawn, fill the object fields with any valid values.',
+  'Kinds: box for boxy everyday things (cubes, game blocks, crates, books, phones, cars as a car-shaped box); its lumpiness rounds the edges, 0 sharp.',
+  'cylinder for cans, mugs, bottles, wheels and pucks. sphere for balls, oranges and marbles. cone for cones and funnels.',
+  'asteroid, panel, dish, bus and fragment are only for space things: rocks and asteroids, solar panels, antennas, satellites, debris.',
+  'Use the colour the thing usually has, as #rrggbb.',
+  'Any physical thing, a brand, a vehicle or a game item included, gets the closest kind and proportions.',
+  'When the kind only approximates the thing, start why with "Approximated:" and say what, for example "Approximated: a Tesla, as a car-shaped box."',
   'why is one short plain sentence.',
 ].join(' ');
+
+/** Added when the line comes from the object panel, where every line is an object to make. */
+const OBJECT_MODE_PROMPT =
+  'This line was typed into the object panel: every line there is an object to make, so the intent is spawn, even for a brand, a vehicle, a game item or a vague word. Never answer none.';
 
 /** KEY=VALUE lines; # comments; optional quotes. Values are returned, never printed. */
 export function readEnvFile(file) {
@@ -122,14 +132,15 @@ function openApiVariant(node) {
 }
 
 /** One Gemini structured-output call. Returns the parsed JSON object. */
-async function askGemini(key, text, fetchImpl) {
+async function askGemini(key, text, fetchImpl, objectMode = false) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const system = objectMode ? `${SYSTEM_PROMPT} ${OBJECT_MODE_PROMPT}` : SYSTEM_PROMPT;
   const call = (generationConfig) =>
     fetchImpl(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text }] }],
         generationConfig,
       }),
@@ -163,19 +174,24 @@ export function createAppServer(options = {}) {
   const elevenlabs = config.elevenKey && config.voiceId ? 'configured' : 'missing';
 
   function health() {
-    const body = { ok: true, server: 'aftergrip key server', gemini, elevenlabs, models: { spec: GEMINI_MODEL, tts: TTS_MODEL }, limits: limits.snapshot() };
+    const body = { ok: true, server: 'robuff key server', gemini, elevenlabs, models: { spec: GEMINI_MODEL, tts: TTS_MODEL }, limits: limits.snapshot() };
     if (config.elevenKey && !config.voiceId) body.elevenlabs_note = 'ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is not.';
     return body;
   }
 
   async function spec(req, res) {
     if (gemini === 'missing') throw new HttpError(503, 'Gemini is not configured on this server (no GEMINI_API_KEY), so the app uses its offline mock.');
-    const text = requestText(await readJsonBody(req), SPEC_MAX_CHARS);
+    const body = await readJsonBody(req);
+    const text = requestText(body, SPEC_MAX_CHARS);
+    // mode 'object': the object panel, where every line is an object. Voice and typed commands
+    // send no mode and keep their intents (gravity, home, help, none).
+    const objectMode = body?.mode === 'object';
     if (!limits.takeSpec()) throw new HttpError(429, "Today's Gemini cap is used up, so the app uses its offline mock until midnight.");
     const t0 = performance.now();
-    const raw = await askGemini(config.geminiKey, text, fetchImpl);
+    const raw = await askGemini(config.geminiKey, text, fetchImpl, objectMode);
     const latency_ms = Math.round(performance.now() - t0);
-    const intent = ['spawn', 'set_gravity', 'home', 'help', 'none'].includes(raw?.intent) ? raw.intent : 'none';
+    const asked = ['spawn', 'set_gravity', 'home', 'help', 'none'].includes(raw?.intent) ? raw.intent : 'none';
+    const intent = objectMode ? 'spawn' : asked;
     const gravity = ['earth', 'mars', 'moon', 'bennu', 'orbit'].includes(raw?.gravity) ? raw.gravity : null;
     const objectSpec = intent === 'spawn' ? Object.fromEntries(SPEC_FIELDS.map((k) => [k, raw?.[k]])) : null;
     sendJson(res, 200, { source: 'gemini', model: GEMINI_MODEL, intent, gravity, spec: objectSpec, latency_ms });
@@ -251,7 +267,7 @@ if (isMain) {
   server.listen(port, host, () => {
     const config = loadConfig();
     console.log(
-      `aftergrip key server on http://${host}:${port} | gemini ${config.geminiKey ? 'configured' : 'missing'} | elevenlabs ${config.elevenKey && config.voiceId ? 'configured' : 'missing'}`,
+      `robuff key server on http://${host}:${port} | gemini ${config.geminiKey ? 'configured' : 'missing'} | elevenlabs ${config.elevenKey && config.voiceId ? 'configured' : 'missing'}`,
     );
   });
 }

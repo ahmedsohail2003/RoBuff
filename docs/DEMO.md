@@ -1,6 +1,6 @@
 # Demo runbook (judging table)
 
-How to run Aftergrip for a judge: 2 minutes of setup, 3 minutes of demo, 2 minutes of questions. Everything shown is a SIMULATION: there is no real robot.
+How to run Robuff for a judge: 2 minutes of setup, 3 minutes of demo, 2 minutes of questions. Everything shown is a SIMULATION: there is no real robot.
 
 ## Before leaving
 

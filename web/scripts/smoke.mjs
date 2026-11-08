@@ -53,7 +53,7 @@ function fileSize(rel) {
   return existsSync(file) ? statSync(file).size : -1;
 }
 
-console.log('Aftergrip pre-judging smoke test');
+console.log('Robuff pre-judging smoke test');
 
 // 1. Build (type check and Vite bundle).
 {

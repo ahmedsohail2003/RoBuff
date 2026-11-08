@@ -1,4 +1,4 @@
-# Aftergrip
+# Robuff
 
 Pinch now, grip 2.56 seconds later. An entry for UB Hacking 2026 by Ahmed Sohail Butt (solo).
 
@@ -6,7 +6,7 @@ Pinch now, grip 2.56 seconds later. An entry for UB Hacking 2026 by Ahmed Sohail
 
 ## What it does
 
-Aftergrip is a browser testbed where your bare hand, seen by a laptop webcam, drives a physics-simulated SO-ARM100 robot arm that picks things up by friction alone. You can ask for an object, such as an asteroid sample or a satellite part, and a guardrail checks it against the arm's measured limits and a simulated lift test before it appears; a gravity menu switches the scene between Earth, Mars, the Moon, the asteroid Bennu and orbit. The next layer, still being built, sends your commands through the true Earth-Moon light delay of 2.56 s, with a predictive "ghost" arm that does not know the rock's true mass.
+Robuff is a browser testbed where your bare hand, seen by a laptop webcam, drives a physics-simulated SO-ARM100 robot arm that picks things up by friction alone. You can ask for an object, such as an asteroid sample or a satellite part, and a guardrail checks it against the arm's measured limits and a simulated lift test before it appears; a gravity menu switches the scene between Earth, Mars, the Moon, the asteroid Bennu and orbit. The next layer, still being built, sends your commands through the true Earth-Moon light delay of 2.56 s, with a predictive "ghost" arm that does not know the rock's true mass.
 
 How each part works, with its measured numbers: [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
 
@@ -36,7 +36,7 @@ The browser tests use the installed Google Chrome (Playwright runs with `channel
 | URL or control | What it does |
 | --- | --- |
 | `?input=webcam` | Your hand drives the arm. Pinch to close the jaw, open to release. With no `?input`, the app starts on the webcam if a camera exists, else on the mouse. If the camera is refused, the page says so and offers the mouse. |
-| `?input=mouse` | Move the mouse to steer, W and S to reach nearer or farther, G to open or close the jaw. Dragging orbits the camera. |
+| `?input=mouse` | Move the mouse to steer, W and S to reach nearer or farther, left click (or G) to close or open the jaw. Right drag orbits the camera. |
 | `?input=synthetic` | A scripted hand picks up the cube by itself. Used by the tests; never counted as a result. |
 | `?speed=N` | Runs N simulated seconds per wall second (0.1 to 8). |
 | `?hands=2` | Tracks two hands instead of one. |
@@ -80,7 +80,7 @@ No camera frames leave the laptop: hand tracking runs on device; Gemini receives
 
 Designed for students and science-centre visitors who want to feel why space robotics is hard, using only a laptop webcam. Nobody has used it yet, and no users are implied. Light takes 2.56 s to go from the Earth to the Moon and back (mean distance 384,400 km, [NASA NSSDC Moon fact sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html), retrieved 2026-11-07). A 2024 University of Bristol study of a robot arm run at delays up to 2.6 s found that performance got worse on every measure the authors recorded ([Louca et al., ACM Transactions on Human-Robot Interaction](https://doi.org/10.1145/3651993), abstract retrieved 2026-11-07).
 
-Also for anyone who wants to try a delay-display experiment without a robot or a lab. Predictive displays have cut completion times for free motion at 1 to 3 s delays ([Sheridan 1984, NTRS 19850006202](https://ntrs.nasa.gov/citations/19850006202); [Richter et al. 2019, IEEE ICRA](https://arxiv.org/abs/1809.08627), 49.2 s with the display against 60.6 s without at 1 s; both retrieved 2026-11-07), and DLR flew one on the ROTEX arm in 1993 at a 5 to 7 s delay ([DLR](https://www.dlr.de/en/rm/research/robotic-systems/history/rotex-1988-1993), retrieved 2026-11-07). Those studies are small (most had 4 to 20 people) and each needed a robot. Aftergrip is not new in idea: predictive displays date from the 1980s JPL and MIT work. It is uncommon at hackathons: in a keyword scan of 755 saved UB Hacking entries we found none that put an arm in a physics simulation, checked generated objects for pickup, or modelled light delay (full text for Fall 2025, titles and taglines for older editions, so the scan can miss entries). Hand tracking is common there, and Aftergrip does not claim it as new.
+Also for anyone who wants to try a delay-display experiment without a robot or a lab. Predictive displays have cut completion times for free motion at 1 to 3 s delays ([Sheridan 1984, NTRS 19850006202](https://ntrs.nasa.gov/citations/19850006202); [Richter et al. 2019, IEEE ICRA](https://arxiv.org/abs/1809.08627), 49.2 s with the display against 60.6 s without at 1 s; both retrieved 2026-11-07), and DLR flew one on the ROTEX arm in 1993 at a 5 to 7 s delay ([DLR](https://www.dlr.de/en/rm/research/robotic-systems/history/rotex-1988-1993), retrieved 2026-11-07). Those studies are small (most had 4 to 20 people) and each needed a robot. Robuff is not new in idea: predictive displays date from the 1980s JPL and MIT work. It is uncommon at hackathons: in a keyword scan of 755 saved UB Hacking entries we found none that put an arm in a physics simulation, checked generated objects for pickup, or modelled light delay (full text for Fall 2025, titles and taglines for older editions, so the scan can miss entries). Hand tracking is common there, and Robuff does not claim it as new.
 
 It is not operator training, it does not model Canadarm3 or any flight system, and the ghost does not solve delay.
 
@@ -110,7 +110,7 @@ These are different projects, and no code from them is reused here. During plann
 - HandSignal: hand-gesture safety signals with MediaPipe.
 - FleetLine: a console for a simulated robot fleet.
 
-What they share with Aftergrip: the same public arm model (WorkCell and EmberHacks), the same hand-tracking library (HandSignal and EmberHacks), and the author's experience.
+What they share with Robuff: the same public arm model (WorkCell and EmberHacks), the same hand-tracking library (HandSignal and EmberHacks), and the author's experience.
 
 ### AI tools used and how
 
