@@ -179,7 +179,7 @@ export class AppStates {
     document.getElementById('camera-intro')?.remove();
     const box = el('div', { id: 'camera-intro', role: 'dialog', 'aria-label': 'Camera' });
     box.append(
-      el('p', {}, 'Robuff follows one hand with your camera: move your hand to steer the arm, pinch thumb and index finger to grip. The video stays on this computer; nothing is uploaded.'),
+      el('p', {}, 'RoBuff follows one hand with your camera: move your hand to steer the arm, pinch thumb and index finger to grip. The video stays on this computer; nothing is uploaded.'),
     );
     const line = el('p', { id: 'tracker-line' }, trackerLine(source.trackerState, source.warmupMs));
     box.append(line);
