@@ -50,6 +50,8 @@ export interface PartSkinState {
   size: [number, number] | null;
   /** A procedural skin drawn because Nano Banana failed or timed out (its note says why). */
   fallback: boolean;
+  /** A Nano Banana image from the disk or session cache (no new image paid for). */
+  cached: boolean;
   /** 'metal' (high metalness, a reflection and bumps from the picture) or 'matte'; null when bare. */
   finish: SkinFinish['kind'] | null;
   /**
@@ -206,6 +208,7 @@ export class SkinLayer {
           text: s?.image.text ?? null,
           size: s ? [s.image.canvas.width, s.image.canvas.height] : null,
           fallback: s ? s.image.source === 'procedural' && s.image.note !== null : false,
+          cached: s ? s.image.source === 'nano-banana' && (s.image.cache === 'hit' || s.image.cache === 'session') : false,
           finish: s ? s.finish : null,
           drawn: this.drawnRight(i),
         };

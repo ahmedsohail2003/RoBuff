@@ -519,7 +519,8 @@ export class LiveChat {
   constructor(
     private readonly router: LiveRouter,
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
-    private readonly timeoutMs = 12_000,
+    // Above the key server's CHAT_TIMEOUT_MS (20 s), so the server answers first with a plain message.
+    private readonly timeoutMs = 22_000,
   ) {}
 
   /**

@@ -200,3 +200,38 @@ test('a typed sentence the grammar does not know goes to the chat brain, and its
   expect(along * 1000).toBeGreaterThanOrEqual(25);
   expect(along * 1000).toBeLessThanOrEqual(35);
 });
+
+// The verifier found "I am already holding it" after a reset: the drop watch's 50 ms gate never
+// opened once the sim clock ran from 0 again, and the voice source kept its "picking it up" label.
+test('after a reset or a respawn, "pick it up" never answers "already holding"', async ({ page }) => {
+  test.setTimeout(300_000);
+  const problems: string[] = [];
+  watchProblems(page, problems);
+  await page.goto('/?input=mouse&mute=1&speed=2');
+  await page.waitForFunction(() => window.__sim?.ready === true && typeof window.__sim.voiceCommand === 'function' && typeof window.__sim.spawnObject === 'function', undefined, { timeout: 90_000 });
+  await waitSim(page, 1);
+  const first = await typed(page, 'pick it up', 90_000);
+  expect((await page.evaluate(() => window.__sim!.voiceObject!()))!.holding, `first pick: ${first.said}`).toBe(true);
+
+  // Reset: the hold ends, the label goes, and a new pick runs instead of a refusal.
+  await page.evaluate(() => window.__sim!.reset());
+  await waitSim(page, 0.5);
+  const afterReset = await page.evaluate(() => ({ holding: window.__sim!.voiceObject!()!.holding, voice: window.__sim!.voiceMotion() as { label?: string } | null }));
+  expect(afterReset.holding).toBe(false);
+  expect(afterReset.voice?.label ?? '').not.toBe('picking it up');
+  const again = await typed(page, 'pick it up', 90_000);
+  expect(again.said ?? '').not.toMatch(/already holding/i);
+  expect((await page.evaluate(() => window.__sim!.voiceObject!()))!.holding, `pick after reset: ${again.said}`).toBe(true);
+
+  // Respawn: a new object in the slot ends the hold too.
+  const spawned = (await page.evaluate(() => window.__sim!.spawnObject!('a tennis ball'))) as { spawned?: boolean };
+  expect(spawned.spawned).toBe(true);
+  await waitSim(page, 0.5);
+  const afterSpawn = await page.evaluate(() => ({ holding: window.__sim!.voiceObject!()?.holding ?? false, voice: window.__sim!.voiceMotion() as { label?: string } | null }));
+  expect(afterSpawn.holding).toBe(false);
+  expect(afterSpawn.voice?.label ?? '').not.toBe('picking it up');
+  const third = await typed(page, 'pick it up', 90_000);
+  expect(third.said ?? '').not.toMatch(/already holding/i);
+  console.log(`VOICE_HOLD_RESET ${JSON.stringify({ first: first.said, again: again.said, third: third.said, afterReset, afterSpawn })}`);
+  expect(problems).toEqual([]);
+});

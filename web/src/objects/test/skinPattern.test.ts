@@ -69,6 +69,14 @@ describe('procedural skins', () => {
     }
   });
 
+  it('takes the finish from the first material word', () => {
+    expect(finishFor('a swirling purple galaxy nebula with tiny gold stars').kind).toBe('matte');
+    expect(finishFor('brushed gold with fine scratches').kind).toBe('metal');
+    expect(finishFor('gold with a little rust').kind).toBe('metal');
+    expect(finishFor('rust over gold').kind).toBe('matte');
+    expect(finishFor('gold, matte').kind).toBe('matte');
+  });
+
   it('same text, same bytes; other text, other bytes', () => {
     const a = proceduralSkin('Carbon  fibre', 256);
     const b = proceduralSkin('carbon fibre', 256);

@@ -10,7 +10,7 @@ import { displayName, matchParts, singular } from '../objects/skinUv';
 import type { SlotRenderer } from '../render/objectMesh';
 import type { SkinImage } from '../render/objectSkin';
 import { duration, skinBadge } from '../render/skinBadge';
-import { modelName, type SkinBrain, type SkinQuality } from '../render/skinSource';
+import { DEFAULT_SKIN_QUALITY, modelName, SKIN_QUALITY_INFO, type SkinBrain, type SkinQuality } from '../render/skinSource';
 
 export interface SkinPreset {
   id: string;
@@ -63,6 +63,7 @@ export class SkinControls {
   private readonly text: HTMLInputElement;
   private readonly part: HTMLSelectElement;
   private readonly high: HTMLInputElement;
+  private readonly fast: HTMLInputElement;
   private readonly file: HTMLInputElement;
   private readonly status: HTMLElement;
   private objectBusy = false;
@@ -108,10 +109,22 @@ export class SkinControls {
     partLabel.appendChild(this.part);
     this.root.appendChild(partLabel);
 
-    const highLabel = el('label', { class: 'skin-label skin-inline' });
-    this.high = el('input', { type: 'checkbox', 'data-testid': 'skin-high' });
-    highLabel.append(this.high, document.createTextNode(' High quality (Pro, about 14 cents)'));
-    this.root.appendChild(highLabel);
+    // Two choices, High quality (Pro) by default: a radio group, so Tab reaches the checked one and
+    // the arrow keys move between them. Keys pressed here must not steer the arm.
+    const quality = el('div', { class: 'skin-quality', role: 'radiogroup', 'aria-label': 'Image quality', 'data-testid': 'skin-quality' });
+    const choice = (value: SkinQuality, text: string): HTMLInputElement => {
+      const label = el('label', { class: 'skin-label skin-inline' });
+      const input = el('input', { type: 'radio', name: 'skin-quality', value, 'data-testid': `skin-quality-${value}` });
+      input.addEventListener('keydown', (event) => event.stopPropagation());
+      label.append(input, document.createTextNode(` ${text}`));
+      quality.appendChild(label);
+      return input;
+    };
+    const info = (q: SkinQuality): string => `${SKIN_QUALITY_INFO[q].name}, about ${SKIN_QUALITY_INFO[q].seconds} s, ${SKIN_QUALITY_INFO[q].cents} cents`;
+    this.high = choice('high', `High quality: ${info('high')}`);
+    this.fast = choice('fast', `Fast: ${info('fast')}`);
+    (DEFAULT_SKIN_QUALITY === 'high' ? this.high : this.fast).checked = true;
+    this.root.appendChild(quality);
 
     const actions = el('div', { class: 'skin-row' });
     // The real control is a button; the file input stays hidden and is only opened by it.
@@ -147,7 +160,7 @@ export class SkinControls {
     this.badge.dataset.testid = `skin-source-${badge.kind}`;
     this.badge.dataset.live = String(badge.live);
     this.badge.title = live
-      ? `Skins are drawn by Nano Banana (${this.brain.model('fast')}, or ${this.brain.model('high')} for high quality) through the key server. Only your description is sent. Each new image is paid; repeats come from the cache.`
+      ? `Skins are drawn by Nano Banana (${this.brain.model('high')} for high quality, the default, or ${this.brain.model('fast')} for fast) through the key server. Only your description is sent. Each new image is paid; repeats come from the cache.`
       : 'Skins are drawn procedurally in the browser. No image model is called.';
   }
 
@@ -185,6 +198,11 @@ export class SkinControls {
     this.sync();
   }
 
+  /** The quality the panel has chosen: 'high' (Nano Banana Pro) by default, or 'fast' (Lite). */
+  get quality(): SkinQuality {
+    return this.fast.checked ? 'fast' : 'high';
+  }
+
   get busy(): boolean {
     return this.drawing || this.objectBusy;
   }
@@ -196,8 +214,12 @@ export class SkinControls {
     const ready = this.target(req.part);
     if (typeof ready === 'string') return this.say(ready);
     const { mesh, names, parts, receipt } = ready;
-    const quality = req.quality ?? (this.high.checked ? 'high' : 'fast');
-    this.setDrawing(true, this.brain.live ? `Asking ${modelName(this.brain.model(quality))} for ${text}...` : `Drawing ${text}...`);
+    // Voice and chat send no quality, so they follow the panel's choice (High quality unless Fast is picked).
+    const quality: SkinQuality = req.quality ?? this.quality;
+    this.setDrawing(
+      true,
+      this.brain.live ? `Asking ${modelName(this.brain.model(quality))} for ${text}, about ${SKIN_QUALITY_INFO[quality].seconds} s...` : `Drawing ${text}...`,
+    );
     let image: SkinImage;
     try {
       image = await this.brain.draw(text, quality);
@@ -276,7 +298,11 @@ export class SkinControls {
       how = image.note ? `${image.note}` : `Drawn procedurally in the browser in ${duration(image.ms)} (offline).`;
       spoken = image.note ? 'Nano Banana did not answer, so I drew it procedurally.' : 'Drawn procedurally, offline.';
     }
-    const line = `Painted ${look} on ${where} of the ${displayName(receipt)}. ${how} ${PAINT_ONLY}`;
+    // A one-shape object's only part carries the object's own name: say it once, not "the solar
+    // panel of the solar panel".
+    const object = displayName(receipt);
+    const whole = where === `the ${object}` ? where : `${where} of the ${object}`;
+    const line = `Painted ${look} on ${whole}. ${how} ${PAINT_ONLY}`;
     this.status.textContent = line;
     return `Painted ${look} on ${where}. ${spoken} Paint only: the physics did not change.`;
   }

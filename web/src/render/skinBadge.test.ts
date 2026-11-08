@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { duration, skinBadge, SKIN_MODEL_FAST, SKIN_MODEL_HIGH, type BadgePart } from './skinBadge';
+import { duration, normaliseSkinText, skinBadge, SKIN_MODEL_FAST, SKIN_MODEL_HIGH, type BadgePart } from './skinBadge';
 
 const bare: BadgePart = { source: null, model: null };
 const lite: BadgePart = { source: 'nano-banana', model: SKIN_MODEL_FAST };
@@ -21,6 +21,16 @@ describe('skin badge: names the skin on the object, never procedural as live', (
     expect(skinBadge([lite, pro], true).text).toBe('skin: Nano Banana 2 Lite (live) + Nano Banana Pro (live)');
   });
 
+  it('a Nano Banana image from the disk or session cache says (cached), not (live)', () => {
+    const proCached: BadgePart = { ...pro, cached: true };
+    expect(skinBadge(Array(3).fill(proCached), true)).toEqual({ text: 'skin: Nano Banana Pro (cached)', kind: 'live', live: true });
+    expect(skinBadge(Array(3).fill(proCached), true).text).not.toContain('(live)');
+    expect(skinBadge([{ ...lite, cached: true }], true).text).toBe('skin: Nano Banana 2 Lite (cached)');
+    expect(skinBadge([pro, proCached], true).text).toBe('skin: Nano Banana Pro (live) + Nano Banana Pro (cached)');
+    // cached means nothing for a procedural skin: the fallback stays honest.
+    expect(skinBadge([{ ...fallback, cached: true }], true).text).toBe('skin: procedural (Nano Banana failed)');
+  });
+
   it('a mix of live and procedural parts is "mixed" and not marked live', () => {
     const b = skinBadge([lite, lite, fallback, bare], true);
     expect(b).toEqual({ text: 'skin: Nano Banana 2 Lite (live) + procedural (Nano Banana failed)', kind: 'mixed', live: false });
@@ -40,5 +50,16 @@ describe('skin badge: names the skin on the object, never procedural as live', (
     expect(duration(0.2)).toBe('1 ms');
     expect(duration(999.4)).toBe('999 ms');
     expect(duration(3444)).toBe('3.4 s');
+  });
+});
+
+describe('skin text normalisation (the same rules as server/skin.mjs)', () => {
+  it('case, spaces, one leading article and end punctuation', () => {
+    expect(normaliseSkinText('A Swirling purple galaxy nebula.')).toBe('swirling purple galaxy nebula');
+    expect(normaliseSkinText('swirling purple galaxy nebula')).toBe('swirling purple galaxy nebula');
+    expect(normaliseSkinText('  the   Brushed GOLD!! ')).toBe('brushed gold');
+    expect(normaliseSkinText('a a cat')).toBe('a cat');
+    expect(normaliseSkinText('an')).toBe('an');
+    expect(normaliseSkinText('brushed gold, with fine scratches')).toBe('brushed gold, with fine scratches');
   });
 });

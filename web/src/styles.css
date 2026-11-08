@@ -123,7 +123,7 @@ body.console-layout #stop-banner button, body.console-layout #camera-intro butto
 #skin-box .skin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
 #skin-box .skin-chips button { font-size: 12px; padding: 3px 8px; }
 #object-panel #skin-box button:disabled, #object-panel #skin-box input:disabled, #object-panel #skin-box select:disabled { opacity: 1; color: #c9cfe0; border-style: dashed; cursor: not-allowed; }
-#object-panel #skin-box input[type="checkbox"] { flex: none; width: auto; margin: 0; padding: 0; }
+#object-panel #skin-box input[type="checkbox"], #object-panel #skin-box input[type="radio"] { flex: none; width: auto; margin: 0; padding: 0; }
 #skin-box .skin-status { color: #c9cfe0; min-height: 1.4em; }
 #skin-box[data-busy="true"] .skin-status { color: #e6e9f2; }
 

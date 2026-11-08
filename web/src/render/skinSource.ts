@@ -6,9 +6,9 @@
 import { objectBrain } from '../objects/objectBrain';
 import { proceduralSkin } from '../objects/skinPattern';
 import type { SkinImage } from './objectSkin';
-import { SKIN_MODEL_FAST, SKIN_MODEL_HIGH } from './skinBadge';
+import { normaliseSkinText, SKIN_MODEL_FAST, SKIN_MODEL_HIGH } from './skinBadge';
 
-export { modelName, SKIN_MODEL_FAST, SKIN_MODEL_HIGH, SKIN_MODEL_NAMES } from './skinBadge';
+export { modelName, normaliseSkinText, SKIN_MODEL_FAST, SKIN_MODEL_HIGH, SKIN_MODEL_NAMES, SKIN_QUALITY_INFO } from './skinBadge';
 export const SKIN_SIZE = 1024;
 export const UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
 const UPLOAD_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -17,6 +17,8 @@ const BROWSER_TIMEOUT_MS = { fast: 32_000, high: 62_000 } as const;
 const SESSION_CACHE = 8;
 
 export type SkinQuality = 'fast' | 'high';
+/** Ahmed, 02:10: High quality (Nano Banana Pro) is the default; Fast (Lite) is the other choice. */
+export const DEFAULT_SKIN_QUALITY: SkinQuality = 'high';
 
 /** One logged skin request, for the live check. */
 export interface SkinCall {
@@ -67,15 +69,16 @@ export class SkinBrain {
     return objectBrain.live && objectBrain.health.skin === 'configured';
   }
 
-  model(quality: SkinQuality = 'fast'): string {
+  model(quality: SkinQuality = DEFAULT_SKIN_QUALITY): string {
     return quality === 'high' ? (objectBrain.health.skinModelHigh ?? SKIN_MODEL_HIGH) : (objectBrain.health.skinModel ?? SKIN_MODEL_FAST);
   }
 
   /** A skin for these words: Nano Banana when live, else procedural. Never throws for a bad network. */
-  async draw(text: string, quality: SkinQuality = 'fast'): Promise<SkinImage> {
+  async draw(text: string, quality: SkinQuality = DEFAULT_SKIN_QUALITY): Promise<SkinImage> {
     const clean = text.replace(/\s+/g, ' ').trim().slice(0, 200);
     const live = this.live;
-    const key = `${live ? quality : 'procedural'}|${clean.toLowerCase()}`;
+    // The same rules as the key server's cache key, so "a galaxy." and "galaxy" are one image.
+    const key = `${live ? quality : 'procedural'}|${normaliseSkinText(clean)}`;
     const kept = this.session.get(key);
     if (kept) {
       // Refresh its place, so the cache drops the least recently used.

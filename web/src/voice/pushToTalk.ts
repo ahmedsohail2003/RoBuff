@@ -162,8 +162,30 @@ export class VoiceConsole {
   private readonly talk: HTMLButtonElement;
   private readonly handBack: HTMLButtonElement;
   private readonly home: Vec3 | null;
-  /** What voice picked up and still holds, or null. */
-  holding: Holding | null = null;
+  private held: Holding | null = null;
+  /** The simulation and sim time the hold began in: a reset (time goes back) or a spawn (a new sim) ends it. */
+  private heldSim: unknown = null;
+  private heldT = 0;
+  /**
+   * What voice picked up and still holds, or null. A reset or a new object in the slot clears it,
+   * so "pick it up" after a reset never answers "I am already holding it".
+   */
+  get holding(): Holding | null {
+    if (this.held && (this.app.loop.sim !== this.heldSim || this.app.loop.sim.time < this.heldT)) {
+      this.held = null;
+      this.lastJawContactT = null;
+      this.lastDropCheckT = -Infinity;
+      this.voiceSource()?.forgetHold();
+    }
+    return this.held;
+  }
+  set holding(next: Holding | null) {
+    this.held = next;
+    this.heldSim = next ? this.app.loop.sim : null;
+    this.heldT = next ? this.app.loop.sim.time : 0;
+    this.lastJawContactT = null;
+    this.lastDropCheckT = -Infinity;
+  }
   /** Live talk sets this: typed and held lines the grammar does not know go to the same chat brain. */
   chatLine: ((text: string) => Promise<unknown>) | null = null;
   private macroBusy = false;
@@ -586,6 +608,11 @@ export class VoiceConsole {
 
   /** While voice holds something: no jaw contact for 0.1 s of simulated time means it slipped out. */
   private watchDrop(t: number): void {
+    // After a reset the sim clock runs from 0 again: without this the 50 ms gate never opens.
+    if (t < this.lastDropCheckT) {
+      this.lastDropCheckT = -Infinity;
+      this.lastJawContactT = null;
+    }
     if (!this.holding || this.macroBusy || !this.mujoco || t - this.lastDropCheckT < 0.05) return;
     this.lastDropCheckT = t;
     let jaws: string[];

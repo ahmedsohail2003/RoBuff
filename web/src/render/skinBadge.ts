@@ -24,6 +24,8 @@ export interface BadgePart {
   model: string | null;
   /** True when a procedural skin was drawn because Nano Banana failed or timed out. */
   fallback?: boolean;
+  /** True when the Nano Banana image came from the key server's disk cache or this page's session cache: no new image was paid for. */
+  cached?: boolean;
 }
 
 export type BadgeKind = 'live' | 'offline' | 'fallback' | 'upload' | 'ready' | 'mixed';
@@ -48,7 +50,8 @@ export function skinBadge(parts: readonly BadgePart[], live: boolean): Badge {
     kinds.add(kind);
   };
   for (const p of parts) {
-    if (p.source === 'nano-banana') add(`${modelName(p.model)} (live)`, 'live');
+    // Still a real Nano Banana image (kind 'live'), but a repeat says (cached), not (live).
+    if (p.source === 'nano-banana') add(`${modelName(p.model)} (${p.cached ? 'cached' : 'live'})`, 'live');
     else if (p.source === 'upload') add('your image', 'upload');
     else if (p.source === 'procedural') {
       if (p.fallback) add('procedural (Nano Banana failed)', 'fallback');
@@ -61,3 +64,26 @@ export function skinBadge(parts: readonly BadgePart[], live: boolean): Badge {
   const kind: BadgeKind = kinds.size === 1 ? [...kinds][0]! : 'mixed';
   return { text: `skin: ${labels.join(' + ')}`, kind, live: kind === 'live' };
 }
+
+/**
+ * The words a skin is cached by in this page: lowercase, spaces collapsed, trailing punctuation
+ * and one leading article (a, an, the) dropped. The key server's normaliseSkinText (server/skin.mjs)
+ * does the same before its prompt and disk cache key, so voice ("paint it like galaxy") and typing
+ * ("a galaxy.") share one paid image.
+ */
+export function normaliseSkinText(raw: string): string {
+  return raw
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s.,;:!?\u2026]+$/u, '')
+    .replace(/^(a|an|the)\s+/, '')
+    .trim();
+}
+
+/** What each quality choice costs and how long it takes, as measured live (Pro 12-15 s, Lite about 4 s). */
+export const SKIN_QUALITY_INFO = {
+  high: { name: 'Nano Banana Pro', seconds: 13, cents: 14 },
+  fast: { name: 'Nano Banana 2 Lite', seconds: 4, cents: 3 },
+} as const;

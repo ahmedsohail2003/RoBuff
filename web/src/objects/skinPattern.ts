@@ -82,7 +82,8 @@ export function recipeFor(text: string): RecipeId {
 /**
  * How a skin's surface takes the light, read from the words. A picture alone only sets colour:
  * gold, chrome or brushed steel read as metal through metalness, a reflection and fine bumps that
- * catch the light. Matte looks keep a dull surface. Rust and wood stay matte even if "metal" is said.
+ * catch the light. Matte looks keep a dull surface. The FIRST material word decides: "a galaxy
+ * nebula with tiny gold stars" and "rusty metal" are matte, "brushed gold with fine scratches" is metal.
  */
 export interface SkinFinish {
   kind: 'metal' | 'matte';
@@ -93,11 +94,14 @@ export interface SkinFinish {
 }
 
 const METAL_WORDS = /\b(gold(en)?|chrome|chromed|silver|steel|metal(lic)?|brass|bronze|copper|alumin(i)?um|titanium|iron|platinum|foil|mirror)\b/;
-const MATTE_WORDS = /\b(rust(y|ed)?|wood(en)?|matte|stone|marble|camo(uflage)?|carbon|fabric|cloth|leather|rubber|lava)\b/;
+const MATTE_WORDS = /\b(rust(y|ed)?|wood(en)?|matte|stone|marble|camo(uflage)?|carbon|fabric|cloth|leather|rubber|lava|galaxy|nebula)\b/;
 
 export function finishFor(text: string): SkinFinish {
   const t = text.toLowerCase();
-  if (!METAL_WORDS.test(t) || MATTE_WORDS.test(t)) return { kind: 'matte', metalness: 0, roughness: 0.6, bump: 0 };
+  const metal = METAL_WORDS.exec(t);
+  const matte = MATTE_WORDS.exec(t);
+  // The first material word decides; the word "matte" itself always wins.
+  if (!metal || /\bmatte\b/.test(t) || (matte !== null && matte.index < metal.index)) return { kind: 'matte', metalness: 0, roughness: 0.6, bump: 0 };
   const polished = /\b(polished|mirror|shiny|chrome|chromed|glossy)\b/.test(t);
   const brushed = /\b(brushed|scratch(es|ed)?|worn|satin|scuffed)\b/.test(t);
   return {

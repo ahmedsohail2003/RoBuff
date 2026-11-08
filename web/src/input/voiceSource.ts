@@ -192,6 +192,14 @@ export class VoiceSource implements InputSource {
     if (site) this.goal = site;
     this.grip = currentGrip(this.loop.sim, JAW_ACTUATOR);
     if (this.state !== 'handed-back') this.state = 'holding';
+    // The last macro's label ("picking it up") must not outlive a reset.
+    this.label = 'reset';
+  }
+
+  /** The object voice held is gone (a reset or a new object): a stale "picking it up" label goes with it. */
+  forgetHold(): void {
+    if (this.busy) return;
+    this.label = 'holding the arm, nothing in the jaw';
   }
 
   describe(): Record<string, unknown> {

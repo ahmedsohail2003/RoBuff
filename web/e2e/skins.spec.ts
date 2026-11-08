@@ -103,7 +103,19 @@ test('skins offline: gold on every part, the wheels by voice, an uploaded image,
   expect(bare.parts.map((p) => p.name)).toEqual(['body', 'cabin', 'front left wheel', 'front right wheel', 'rear left wheel', 'rear right wheel']);
   expect(bare.parts.every((p) => p.source === null)).toBe(true);
 
-  // (2) The Gold chip: procedural, a 1024 texture on EVERY part, filtered and in sRGB.
+  // The quality choice: two radios, High quality (Nano Banana Pro) checked by default, and Tab reaches it.
+  const qualityGroup = page.getByRole('radiogroup', { name: 'Image quality' });
+  await expect(qualityGroup.getByRole('radio')).toHaveCount(2);
+  await expect(page.getByTestId('skin-quality-high')).toBeChecked();
+  await expect(page.getByTestId('skin-quality-fast')).not.toBeChecked();
+  await expect(qualityGroup).toContainText('High quality: Nano Banana Pro, about 13 s, 14 cents');
+  await expect(qualityGroup).toContainText('Fast: Nano Banana 2 Lite, about 4 s, 3 cents');
+  await page.getByTestId('skin-part').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('skin-quality-high')).toBeFocused();
+
+  // (2) The Gold chip: procedural, a 1024 texture on EVERY part, filtered and in sRGB. Offline,
+  // the default High quality still paints procedural, and the badge says offline, not Pro.
   await page.click('[data-skin-preset="gold"]');
   await expect(page.getByTestId('skin-status')).toContainText('Painted gold on all 6 parts');
   await expect(page.getByTestId('skin-status')).toContainText('Paint only: mass, friction and hulls did not change.');
@@ -226,6 +238,13 @@ test('skins offline: gold on every part, the wheels by voice, an uploaded image,
   await expect(page.getByTestId('skin-status')).toContainText('Painted red with white racing stripes');
   mkdirSync(EVIDENCE_DIR, { recursive: true });
   await page.getByTestId('skin-box').screenshot({ path: path.join(EVIDENCE_DIR, 'skins-panel.png') });
+
+  // (8) A one-shape object is named once: "on the solar panel", not "on the solar panel of the solar panel".
+  const panel = await spawn(page, 'a cubesat solar panel');
+  expect(panel.spawned).toBe(true);
+  await page.click('[data-skin-preset="gold"]');
+  await expect(page.getByTestId('skin-status')).toContainText('Painted gold on the solar panel. ');
+  await expect(page.getByTestId('skin-status')).not.toContainText('of the solar panel');
   writeFileSync(path.join(EVIDENCE_DIR, 'skins-offline.json'), JSON.stringify({ gold, glAniso, wheels, uploaded, removed, fresh, via, calls: await page.evaluate(() => window.__sim!.skinCalls!()) }, null, 2));
   expect(problems).toEqual([]);
 });
@@ -248,6 +267,8 @@ test('skin badge with a stubbed live key server: a procedural fallback is not sh
     const body = route.request().postDataJSON() as { text: string; quality: string };
     posts.push(body);
     if (body.quality !== 'high') return route.fulfill({ status: 422, body: 'Nano Banana would not draw that (IMAGE_RECITATION)' });
+    // A short wait, so the pending status (model and expected time) can be read.
+    await new Promise((r) => setTimeout(r, 1500));
     return route.fulfill({ json: { url: `/api/skin/${HASH}.png`, model: 'gemini-3-pro-image', cache: 'miss', drawn_ms: 1234, width: 96, height: 64 } });
   });
   await page.route(`**/api/skin/${HASH}.png`, (route) => route.fulfill({ contentType: 'image/png', body: makePng() }));
@@ -260,6 +281,9 @@ test('skin badge with a stubbed live key server: a procedural fallback is not sh
   const car = await spawn(page, 'a tesla');
   expect(car.spawned).toBe(true);
 
+  // High quality is the default; (1) asks with Fast chosen.
+  await expect(page.getByTestId('skin-quality-high')).toBeChecked();
+  await page.getByTestId('skin-quality-fast').check();
   // (1) The image call is refused: every part is a procedural fallback, and the badge says so.
   await page.getByTestId('skin-text').fill('glossy candy apple red');
   await page.getByTestId('skin-apply').click();
@@ -271,9 +295,10 @@ test('skin badge with a stubbed live key server: a procedural fallback is not sh
   for (const p of refused.parts) expect([p.name, p.source, p.model, p.fallback]).toEqual([p.name, 'procedural', null, true]);
 
   // (2) High quality: a Pro image. The badge names Pro, not Lite.
-  await page.getByTestId('skin-high').check();
+  await page.getByTestId('skin-quality-high').check();
   await page.getByTestId('skin-text').fill('brushed gold with fine scratches');
   await page.getByTestId('skin-apply').click();
+  await expect(page.getByTestId('skin-status')).toContainText('Asking Nano Banana Pro for brushed gold with fine scratches, about 13 s');
   await expect(page.getByTestId('skin-status')).toContainText('Drawn by Nano Banana Pro (gemini-3-pro-image) in 1.2 s');
   await expect(badge).toHaveText('skin: Nano Banana Pro (live)');
   await expect(badge).toHaveAttribute('data-testid', 'skin-source-live');
@@ -282,11 +307,18 @@ test('skin badge with a stubbed live key server: a procedural fallback is not sh
   for (const p of pro.parts) expect([p.source, p.model, p.size, p.fallback]).toEqual(['nano-banana', 'gemini-3-pro-image', [1024, 1024], false]);
 
   // (3) The refused look again, on the wheels only: a mix, so the badge is not marked live.
-  await page.getByTestId('skin-high').uncheck();
+  await page.getByTestId('skin-quality-fast').check();
   await page.evaluate(() => window.__sim!.skinObject!('glossy candy apple red', 'wheels'));
   await expect(badge).toHaveText('skin: Nano Banana Pro (live) + procedural (Nano Banana failed)');
   await expect(badge).toHaveAttribute('data-testid', 'skin-source-mixed');
   await expect(badge).toHaveAttribute('data-live', 'false');
+  expect(posts.map((p) => p.quality)).toEqual(['fast', 'high']);
+
+  // (3b) The Pro look again, spelled differently: the session cache answers, no new call, and the badge says (cached).
+  await page.getByTestId('skin-quality-high').check();
+  await page.evaluate(() => window.__sim!.skinObject!('Brushed gold with fine scratches.', null));
+  await expect(badge).toHaveText('skin: Nano Banana Pro (cached)');
+  await expect(badge).toHaveAttribute('data-testid', 'skin-source-live');
   expect(posts.map((p) => p.quality)).toEqual(['fast', 'high']);
 
   // (4) Remove: no skin, so the badge goes back to ready.
