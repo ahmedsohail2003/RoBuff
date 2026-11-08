@@ -1,8 +1,13 @@
-// WebGL backdrop for the dark bands: a slowly drifting, twinkling starfield and, in the hero,
-// a procedurally textured Moon partly in view at the right edge. Decorative only (illustrative,
-// not a sky map). Pauses when off screen, draws one still frame under prefers-reduced-motion,
-// and does nothing if WebGL is unavailable.
+// WebGL backdrop for the dark bands: a drifting, twinkling starfield in three depth layers, and bodies
+// drawn as dots like the robot: in the hero a large cratered Moon at the right edge and a small far
+// ringed planet; in the closing band a ringed planet in the corner. Each dot is lit from a sun to one
+// side, so there is a terminator, and dots thin out and dim toward the night side. The sun and the
+// bodies lean toward the mouse or finger. Decorative and illustrative only, not a sky map.
+// Pauses when off screen, draws one still frame under prefers-reduced-motion, and does nothing
+// if WebGL is unavailable.
 import * as THREE from '../vendor/three.module.js';
+import { makeBody, makeRing, rng } from './dotbody.js';
+import { pointer, trackPointer } from './pointer.js';
 
 function webglOK() {
   try {
@@ -11,81 +16,6 @@ function webglOK() {
   } catch (e) {
     return false;
   }
-}
-
-// small seeded random, so the Moon looks the same on every visit
-function rng(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function moonTexture() {
-  const W = 1024;
-  const H = 512;
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
-  const g = c.getContext('2d');
-  const r = rng(2026);
-  g.fillStyle = '#8d8d8f';
-  g.fillRect(0, 0, W, H);
-  // maria: large soft dark patches
-  for (let i = 0; i < 14; i++) {
-    const x = r() * W;
-    const y = H * (0.2 + r() * 0.6);
-    const rad = 40 + r() * 120;
-    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
-    grd.addColorStop(0, 'rgba(60,60,64,0.55)');
-    grd.addColorStop(1, 'rgba(60,60,64,0)');
-    g.fillStyle = grd;
-    g.beginPath();
-    g.ellipse(x, y, rad * 1.4, rad, 0, 0, Math.PI * 2);
-    g.fill();
-  }
-  // fine grain
-  const im = g.getImageData(0, 0, W, H);
-  for (let i = 0; i < im.data.length; i += 4) {
-    const n = (r() - 0.5) * 18;
-    im.data[i] += n;
-    im.data[i + 1] += n;
-    im.data[i + 2] += n;
-  }
-  g.putImageData(im, 0, 0);
-  // craters: dark floor, bright rim on one side, shadow on the other
-  for (let i = 0; i < 420; i++) {
-    const big = r() < 0.08;
-    const rad = big ? 14 + r() * 26 : 2 + Math.pow(r(), 2) * 12;
-    const x = r() * W;
-    const y = H * 0.08 + r() * H * 0.84;
-    const sx = 1 / Math.max(0.35, Math.cos(((y / H) - 0.5) * Math.PI)); // widen near the poles
-    g.save();
-    g.translate(x, y);
-    g.scale(Math.min(sx, 2.5), 1);
-    g.fillStyle = 'rgba(40,40,44,0.35)';
-    g.beginPath();
-    g.arc(0, 0, rad, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = 'rgba(210,210,214,0.35)';
-    g.lineWidth = Math.max(1, rad * 0.18);
-    g.beginPath();
-    g.arc(0, 0, rad, Math.PI * 0.9, Math.PI * 1.9);
-    g.stroke();
-    g.strokeStyle = 'rgba(20,20,24,0.35)';
-    g.beginPath();
-    g.arc(0, 0, rad, Math.PI * -0.1, Math.PI * 0.9);
-    g.stroke();
-    g.restore();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  return tex;
 }
 
 function starField(count, spread, zNear = 5, zFar = 65) {
@@ -130,7 +60,93 @@ function starField(count, spread, zNear = 5, zFar = 65) {
   return new THREE.Points(geo, mat);
 }
 
-function mountScene(canvas, { moon, stars }) {
+// A body made of dots (see dotbody.js). Every dot is lit in the shader from uSun, so the terminator,
+// the crater shadows and the thinning of dots into the night side all move when the sun or the body turns.
+// A scan ring sweeps from the nearest point out to the edge now and then, like the robot's scan band.
+const BODY_VERT = `
+  attribute vec3 aNormal; attribute float aAlb; attribute float aRnd;
+  uniform vec3 uSun; uniform float uPx; uniform float uSize; uniform float uScan;
+  uniform float uNight; uniform float uAlpha; uniform float uR; uniform float uRing; uniform float uHideR;
+  varying float vA;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    vec4 c = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+    // light and facing both use the view-space normal, with the sun given in view space too
+    vec3 nV = normalize(normalMatrix * aNormal);
+    float l = dot(nV, uSun);
+    // a dot faces the camera when its normal points back along the line of sight (not just toward +z:
+    // under perspective an off-axis body would lose part of its lit rim)
+    float front = smoothstep(0.0, 0.32, dot(nV, normalize(-mv.xyz)));
+    if (uRing > 0.5) {
+      // ring dots have no far side; the ones behind the planet's disc are hidden by it
+      l = 0.25 + 0.75 * abs(l);
+      front = (mv.z < c.z && length(mv.xy - c.xy) < uHideR) ? 0.0 : 1.0;
+    }
+    float lit = clamp(l, 0.0, 1.0);
+    float b = aAlb * pow(lit, 0.7);
+    // brightness sets each dot's size and alpha, like a halftone; the darkest ground drops out
+    float show = smoothstep(0.03, 0.16, b);
+    float night = uNight * (1.0 - smoothstep(-0.05, 0.1, l));
+    float depth = (mv.z - c.z) / max(uR, 0.0001);
+    float scan = (1.0 - uRing) * max(0.0, 1.0 - abs(depth - uScan) / 0.05) * step(0.03, lit);
+    vA = uAlpha * front * clamp(show * (0.2 + 0.8 * b) + night + scan * 0.5, 0.0, 1.0);
+    gl_PointSize = uSize * uPx * (0.55 + 0.9 * b + scan * 0.6);
+  }`;
+// square dots, like the robot's: at 1.5 to 2.5 px a round mask would leave most of them faint
+const BODY_FRAG = `
+  varying float vA;
+  void main() {
+    if (vA < 0.004) discard;
+    gl_FragColor = vec4(1.0, 1.0, 1.0, vA);
+  }`;
+
+function dotPoints(body, { size = 1.6, night = 0.06, alpha = 1, ring = false } = {}) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(body.pos, 3));
+  geo.setAttribute('aNormal', new THREE.BufferAttribute(body.nrm, 3));
+  geo.setAttribute('aAlb', new THREE.BufferAttribute(body.alb, 1));
+  geo.setAttribute('aRnd', new THREE.BufferAttribute(body.rnd, 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uSun: { value: new THREE.Vector3(0.6, 0.45, 0.65).normalize() },
+      uPx: { value: 1 },
+      uSize: { value: size },
+      uScan: { value: -1 },
+      uNight: { value: night },
+      uAlpha: { value: alpha },
+      uR: { value: 1 },
+      uRing: { value: ring ? 1 : 0 },
+      uHideR: { value: 0 },
+    },
+    vertexShader: BODY_VERT,
+    fragmentShader: BODY_FRAG,
+  });
+  const pts = new THREE.Points(geo, mat);
+  if (!ring) {
+    // an invisible sphere that only writes depth, so stars behind the body are hidden instead of shining through its dots
+    const occ = new THREE.Mesh(new THREE.SphereGeometry(0.97, 32, 20), new THREE.MeshBasicMaterial({ colorWrite: false }));
+    pts.add(occ);
+  }
+  return pts;
+}
+
+// A ringed planet: banded dots for the globe and a flat dotted ring tilted around it.
+function ringedPlanet(dense, seed, alpha = 1) {
+  const group = new THREE.Group();
+  const globe = dotPoints(makeBody({ n: dense ? 3200 : 1800, seed, craters: 0, bands: 7, grain: 0.05, base: 0.78, squash: 0.94 }), { size: 1.5, night: 0.05, alpha });
+  const ring = dotPoints(makeRing({ n: dense ? 1500 : 900, seed: seed + 1, inner: 1.3, outer: 1.95 }), { size: 1.2, ring: true, alpha: 0.55 * alpha });
+  ring.rotation.x = -1.02;
+  group.add(globe, ring);
+  group.rotation.z = 0.32;
+  return { group, globe, ring };
+}
+
+function mountScene(canvas, { moon, planet, stars }) {
   const host = canvas.parentElement;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -151,39 +167,67 @@ function mountScene(canvas, { moon, stars }) {
     l.pts.material.uniforms.uPx.value = dpr;
     scene.add(l.pts);
   });
-  const moonBase = new THREE.Vector3();
 
-  let moonMesh = null;
+  // bodies: each has a home in pixels (worked out per layout on resize) and a size in pixels
+  const bodies = [];
+  const small = Math.min(window.innerWidth, window.innerHeight) < 700;
   if (moon) {
-    const tex = moonTexture();
-    const mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: tex, bumpScale: 2.5, roughness: 1, metalness: 0 });
-    moonMesh = new THREE.Mesh(new THREE.SphereGeometry(3.2, 96, 64), mat);
-    moonMesh.rotation.z = 0.12;
-    scene.add(moonMesh);
-    const sun = new THREE.DirectionalLight(0xffffff, 3.2);
-    sun.position.set(-6, 2, 4);
-    scene.add(sun);
-    scene.add(new THREE.AmbientLight(0x8090b0, 0.08));
+    const m = dotPoints(makeBody({ n: small ? 22000 : 48000, seed: 2026, craters: 190, rMin: 0.02, rMax: 0.26, depth: 1.7, maria: 8, layout: 'rings' }), { size: small ? 1.6 : 1.7, night: 0.05 });
+    scene.add(m);
+    bodies.push({ kind: 'moon', obj: m, pts: [m], spin: 0.03, sunBase: new THREE.Vector3(-0.86, 0.3, 0.42), home: { x: 0, y: 0, r: 1 } });
   }
+  if (planet) {
+    const p = ringedPlanet(!small, planet.seed || 11, planet.alpha || 1);
+    scene.add(p.group);
+    bodies.push({ kind: 'planet', obj: p.group, pts: [p.globe, p.ring], spin: 0.05, sunBase: new THREE.Vector3(-0.5, 0.5, 0.7), place: planet.place, home: { x: 0, y: 0, r: 1 } });
+  }
+  bodies.forEach((b) => b.pts.forEach((p) => (p.material.uniforms.uPx.value = dpr)));
+  const moonBody = bodies.find((b) => b.kind === 'moon');
 
+  let w = 1;
+  let h = 1;
+  // the calculator card's right edge, in this band's pixels (the desktop Moon sits just right of it)
+  const cardRight = () => {
+    const card = document.getElementById('calc');
+    return card ? card.getBoundingClientRect().right - host.getBoundingClientRect().left : w * 0.88;
+  };
+  let unit = 1; // world units per css pixel at the bodies' depth (z = 0)
   function resize() {
-    const w = Math.max(1, host.clientWidth);
-    const h = Math.max(1, host.clientHeight);
+    w = Math.max(1, host.clientWidth);
+    h = Math.max(1, host.clientHeight);
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    if (moonMesh) {
-      // keep the Moon partly off the right edge, whatever the aspect
-      const halfW = Math.tan((camera.fov * Math.PI) / 360) * 10 * camera.aspect;
-      const narrow = w < 901;
-      moonBase.set(halfW - (narrow ? 0.2 : 0.9), narrow ? 4.6 : 1.6, 0);
-      moonMesh.position.copy(moonBase);
-      // on phones the hero is tall and narrow: a smaller Moon tucked in the top corner keeps the copy on black
-      moonMesh.scale.setScalar(narrow ? 0.38 : 1);
-    }
+    unit = (2 * Math.tan((camera.fov * Math.PI) / 360) * 10) / h;
+    const narrow = w < 901;
+    if (moonBody) moonBody.pts[0].material.uniforms.uAlpha.value = narrow ? 0.26 : 1;
+    bodies.forEach((b) => {
+      let px;
+      if (b.kind === 'moon') {
+        // desktop: a large Moon just right of the glass calculator, mostly off the edge, its lit left side showing as a crescent.
+        // phone: a dimmer Moon behind the robot band, as a backdrop disc, clear of the menu button and the copy.
+        const r = narrow ? Math.min(150, w * 0.38) : Math.min(320, h * 0.36);
+        // at least 90 px of crescent always shows, even where the gap beside the card is narrow
+        px = narrow ? { x: w * 0.6, y: 224, r } : { x: Math.min(cardRight() + r + 12, w + r - 90), y: h * 0.26, r };
+      } else {
+        px = b.place(w, h, narrow);
+      }
+      b.obj.visible = !!px;
+      if (!px) return;
+      b.home = px;
+      b.obj.scale.setScalar(px.r * unit);
+      b.pts.forEach((p) => {
+        p.material.uniforms.uR.value = px.r * unit;
+        p.material.uniforms.uHideR.value = px.r * unit * 0.98;
+      });
+    });
   }
   resize();
-  new ResizeObserver(resize).observe(host);
+  // setSize clears the drawing buffer, so under reduced motion the still frame is drawn again after each resize
+  new ResizeObserver(() => {
+    resize();
+    if (reduce) frame(performance.now());
+  }).observe(host);
 
   let visible = true;
   let ex = 0;
@@ -191,6 +235,7 @@ function mountScene(canvas, { moon, stars }) {
   let raf = 0;
   let last = performance.now();
   let t = 0;
+  const sun = new THREE.Vector3();
   function frame(now) {
     raf = 0;
     const dt = Math.min(0.05, (now - last) / 1000);
@@ -208,16 +253,38 @@ function mountScene(canvas, { moon, stars }) {
       l.pts.position.y = -ey * 0.5 * l.k + sc * 1.2 * l.k;
     });
     camera.rotation.set(ey * 0.025, -ex * 0.035, 0);
-    if (moonMesh) {
-      moonMesh.rotation.y = 0.6 + t * 0.03 + ex * 0.08;
-      moonMesh.position.set(moonBase.x + ex * 0.35, moonBase.y + ey * 0.25 + sc * 0.6, moonBase.z);
-    }
+    camera.updateMatrixWorld();
+    // the scan ring sweeps out from the nearest point every 9 s, then rests
+    const ph = (t * 0.11) % 1;
+    const scan = reduce ? -1 : ph < 0.55 ? 1 - ph / 0.55 : -1;
+    bodies.forEach((b) => {
+      if (!b.obj.visible) return;
+      const hx = (b.home.x - w / 2) * unit;
+      const hy = (h / 2 - b.home.y) * unit;
+      const drift = b.kind === 'moon' && w < 901 ? 0 : sc * 0.5;
+      b.obj.position.set(hx + ex * 0.25, hy + ey * 0.18 + drift, 0);
+      if (b.kind === 'moon') {
+        b.obj.rotation.set(0.2 - ey * 0.22, 0.6 + t * b.spin + ex * 0.45, 0.62);
+      } else {
+        b.obj.rotation.y = t * b.spin + ex * 0.4;
+        b.obj.rotation.x = 0.25 - ey * 0.2;
+      }
+      // the sun swings toward the pointer, so the terminator and the crater shadows move with it;
+      // the shader lights in view space, so the sun is turned into the camera's frame
+      sun.copy(b.sunBase);
+      sun.x += ex * 0.75;
+      sun.y += ey * 0.45;
+      sun.normalize().transformDirection(camera.matrixWorldInverse);
+      b.pts.forEach((p) => {
+        p.material.uniforms.uSun.value.copy(sun);
+        p.material.uniforms.uScan.value = scan;
+      });
+    });
     renderer.render(scene, camera);
     if (visible && !reduce) raf = requestAnimationFrame(frame);
   }
   if (reduce) {
     frame(performance.now());
-    window.addEventListener('resize', () => requestAnimationFrame(frame));
     return;
   }
   new IntersectionObserver((entries) => {
@@ -230,23 +297,25 @@ function mountScene(canvas, { moon, stars }) {
   raf = requestAnimationFrame(frame);
 }
 
-// pointer or touch position in -1..1, shared by both scenes; each scene eases toward it every frame
-const pointer = { x: 0, y: 0 };
-function trackPointer() {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const set = (x, y) => {
-    pointer.x = (x / window.innerWidth) * 2 - 1;
-    pointer.y = -((y / window.innerHeight) * 2 - 1);
-  };
-  window.addEventListener('pointermove', (e) => set(e.clientX, e.clientY), { passive: true });
-  window.addEventListener('touchmove', (e) => { if (e.touches[0]) set(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-}
-
 export function mountSpace3D() {
   if (!webglOK()) return;
   trackPointer();
   const hero = document.getElementById('hero-space');
-  if (hero) mountScene(hero, { moon: true, stars: 3000 });
+  if (hero) {
+    mountScene(hero, {
+      moon: true,
+      // a small far planet in the hero's upper left, above the badge
+      planet: { seed: 17, alpha: 0.55, place: (w, h, narrow) => (narrow ? null : { x: Math.max(84, (w - 1152) / 2 - 62), y: 140, r: 26 }) },
+      stars: 3000,
+    });
+  }
   const cta = document.getElementById('cta-space');
-  if (cta) mountScene(cta, { moon: false, stars: 1200 });
+  if (cta) {
+    mountScene(cta, {
+      moon: false,
+      // a ringed planet in the closing band's top right corner, clear of the heading and the robot (not on phones, where it would sit on the heading)
+      planet: { seed: 11, place: (w, h, narrow) => (narrow ? null : { x: w - 118, y: 96, r: 38 }) },
+      stars: 1200,
+    });
+  }
 }
