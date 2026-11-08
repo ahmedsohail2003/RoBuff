@@ -13,6 +13,7 @@ import { gravity, setGravity, type GravityPreset } from '../sim/gravity';
 import type { Vec3 } from '../sim/simulation';
 import type { InputSource } from '../input/handState';
 import { HELP_LINE, parseCommand, type VoiceAction } from './grammar';
+import { LIVE_BADGE, UNSUPPORTED_NOTE, warmAudioOutput, type LiveListener, type LiveState } from './liveTalk';
 import { consoleVoice, type Caption, type ConsoleVoice } from './speak';
 
 export type ToggleName = 'delay' | 'ghost';
@@ -79,6 +80,18 @@ const STYLE = `
 #voice-panel button { font: inherit; color: inherit; background: #1d2850; border: 1px solid #3a466e; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
 #voice-panel button.talk { width: 100%; margin-bottom: 6px; padding: 6px; }
 #voice-panel button.talk[data-held="true"] { background: #7a2a2a; border-color: #ff8a80; }
+#voice-panel .talk-row { display: flex; gap: 6px; margin-bottom: 6px; }
+#voice-panel .talk-row button { flex: 1 1 0; min-width: 0; margin: 0; padding: 6px; }
+#voice-panel button.live[aria-pressed="true"] { background: #173d2a; border-color: #7ee2a8; }
+#voice-panel button.live[data-state="paused"] { background: #3a3015; border-color: #f2c14e; }
+#voice-panel button:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 2px; }
+#voice-panel .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: #5d6788; }
+#voice-panel .live[data-state="listening"] .dot { background: #7ee2a8; animation: live-pulse 1.2s ease-in-out infinite; }
+#voice-panel .live[data-state="paused"] .dot { background: #f2c14e; }
+@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.65); } }
+@media (prefers-reduced-motion: reduce) { #voice-panel .live .dot { animation: none !important; } }
+#voice-panel .live-note { color: #aab3cc; font-size: 11px; margin: -2px 0 6px; }
+#voice-panel .live-note:empty { display: none; }
 #voice-panel .caption { margin-top: 8px; min-height: 2.8em; font-size: 13px; }
 #voice-panel .caption .via { color: #8890a8; font-size: 10.5px; margin-left: 4px; }
 #voice-panel .heard { color: #aab3cc; font-size: 11px; margin-top: 4px; }
@@ -105,6 +118,13 @@ export class VoiceConsole {
   private readonly brainBadge: HTMLElement;
   private readonly voiceBadge: HTMLElement;
   private readonly micBadge: HTMLElement;
+  private readonly liveBadge: HTMLElement;
+  private readonly liveButton: HTMLButtonElement;
+  private readonly liveLabel: HTMLElement;
+  private readonly liveNote: HTMLElement;
+  private live: LiveListener | null = null;
+  /** The last object asked for by voice or live talk (sent to the chat route as state). */
+  lastObject: string | null = null;
   private readonly caption: HTMLElement;
   private readonly heard: HTMLElement;
   private readonly input: HTMLInputElement;
@@ -136,7 +156,8 @@ export class VoiceConsole {
       { class: 'badge mic', 'data-testid': 'mic-badge', title: Ctor ? "The browser's speech recognition sends audio to its speech service: it needs the network." : '' },
       Ctor ? 'speech-to-text: browser (needs network)' : 'speech-to-text: not in this browser, type instead',
     );
-    badges.append(this.brainBadge, this.voiceBadge, this.micBadge);
+    this.liveBadge = el('span', { class: 'badge', 'data-testid': 'live-badge' });
+    badges.append(this.brainBadge, this.voiceBadge, this.micBadge, this.liveBadge);
     this.root.appendChild(badges);
 
     this.talk = el('button', { type: 'button', class: 'talk', 'data-testid': 'voice-talk', 'aria-label': 'Hold to talk (or hold V)' }, 'Hold to talk (or hold V)');
@@ -145,7 +166,22 @@ export class VoiceConsole {
       this.startListening();
     });
     for (const type of ['pointerup', 'pointerleave', 'pointercancel'] as const) this.talk.addEventListener(type, () => this.stopListening());
-    this.root.appendChild(this.talk);
+    // Talk live: a toggle (Enter or a click), hands-free until pressed again.
+    this.liveButton = el('button', {
+      type: 'button',
+      class: 'live',
+      'data-testid': 'voice-live',
+      'aria-pressed': 'false',
+      'data-state': Ctor ? 'off' : 'unsupported',
+      title: Ctor ? 'Hands-free: RoBuff listens until you press this again, and pauses while it speaks.' : UNSUPPORTED_NOTE,
+    });
+    this.liveLabel = el('span', { class: 'label' }, Ctor ? 'Talk live' : 'Talk live (not in this browser)');
+    this.liveButton.append(el('span', { class: 'dot', 'aria-hidden': 'true' }), this.liveLabel);
+    this.liveButton.addEventListener('click', () => this.toggleLive());
+    const row = el('div', { class: 'talk-row' });
+    row.append(this.talk, this.liveButton);
+    this.liveNote = el('div', { class: 'live-note', 'data-testid': 'live-note', 'aria-live': 'polite' });
+    this.root.append(row, this.liveNote);
 
     const form = el('form');
     this.input = el('input', { type: 'text', placeholder: 'Or type: stop, Moon, give me a comet ice shard', 'aria-label': 'Type a command', 'data-testid': 'voice-text' });
@@ -186,6 +222,49 @@ export class VoiceConsole {
     this.voice.live = this.brain.health.reachable && this.brain.health.elevenlabs === 'configured';
     this.voiceBadge.textContent = this.voice.badge();
     this.voiceBadge.dataset.live = String(this.voice.live);
+    this.liveBadge.textContent = this.brain.live ? LIVE_BADGE.live : LIVE_BADGE.offline;
+    this.liveBadge.dataset.live = String(this.brain.live);
+  }
+
+  /** Live talk hands its ears to the panel once it is built. */
+  attachLive(live: LiveListener): void {
+    this.live = live;
+    this.showLive(live.state, live.note);
+  }
+
+  /** The Talk live button's label, dot and note for a live-talk state. */
+  showLive(state: LiveState, note: string | null): void {
+    const label = { off: 'Talk live', listening: 'Live: listening...', paused: 'Live: paused while RoBuff speaks', unsupported: 'Talk live (not in this browser)' }[state];
+    this.liveLabel.textContent = label;
+    this.liveButton.dataset.state = state;
+    const on = state === 'listening' || state === 'paused';
+    this.liveButton.setAttribute('aria-pressed', String(on));
+    this.liveButton.setAttribute('aria-label', on ? `${label} Press to turn live talk off.` : label);
+    this.liveNote.textContent = note ?? '';
+  }
+
+  private toggleLive(): void {
+    if (!this.live) {
+      this.liveNote.textContent = 'Live talk is still loading.';
+      return;
+    }
+    if (!this.live.supported) {
+      this.showLive('unsupported', UNSUPPORTED_NOTE);
+      this.input.focus();
+      return;
+    }
+    // Turning on from a click: start the audio output now, so the first reply is not held up by it.
+    if (!this.live.on) warmAudioOutput(this.voice.muted);
+    this.live.toggle();
+  }
+
+  /** Runs one already-parsed action through the same handlers as a typed or held line, and records it. */
+  async runParsed(text: string, action: VoiceAction, by: CommandResult['by'] = 'grammar', network = false): Promise<CommandResult> {
+    this.heard.textContent = `Heard: "${text}"`;
+    const result: CommandResult = { text, action, by, said: null, network, simTime: this.app.sim.time, stoppedAt: null, atMs: performance.now(), stoppedAtMs: null };
+    this.results.push(result);
+    result.said = await this.run(action, result);
+    return result;
   }
 
   /** One spoken or typed line, end to end. */
@@ -220,7 +299,7 @@ export class VoiceConsole {
         latch.stop('voice', this.app.sim.time);
         result.stoppedAt = latch.since;
         result.stoppedAtMs = performance.now();
-        return this.say('Stopped. Every joint and the jaw hold. Press Resume on screen to go on.', 'stop', { fixed: true, interrupt: true });
+        return this.say('Stopped. The arm holds where it is. Press Resume on screen to go on.', 'stop', { fixed: true, interrupt: true });
       }
       case 'resume':
         return this.say(stopped ? STOPPED_LINE : 'I am not stopped.', 'info', { fixed: true });
@@ -250,6 +329,7 @@ export class VoiceConsole {
       case 'object': {
         const request = this.brain.requestObject;
         if (!request) return this.say('The object fabricator is still loading. Try again in a moment.', 'info');
+        this.lastObject = action.text;
         // The object panel speaks the receipt when the request finishes.
         await request(action.text);
         return this.voice.captions[this.voice.captions.length - 1]?.text ?? null;
@@ -291,6 +371,10 @@ export class VoiceConsole {
 
   private startListening(): void {
     if (this.listening) return;
+    if (this.live?.on) {
+      this.heard.textContent = 'Live talk is on: just speak. Press Talk live again to turn it off.';
+      return;
+    }
     const Ctor = recognitionCtor();
     if (!Ctor) {
       this.heard.textContent = 'Speech recognition is not in this browser: type the command.';
@@ -356,7 +440,7 @@ export interface VoiceHook {
   voiceCaptions(): Caption[];
   /** Every command handled so far, typed, spoken or from voiceCommand. */
   voiceResults(): CommandResult[];
-  voiceBadges(): { brain: string; voice: string; mic: string };
+  voiceBadges(): { brain: string; voice: string; mic: string; live: string };
   /** Logged Gemini calls (live gate). */
   brainCalls(): ObjectBrain['calls'];
 }
@@ -380,6 +464,7 @@ export function mountVoice(app: App, withHooks: boolean): VoiceConsole {
         brain: document.querySelector('[data-testid="brain-badge"]')?.textContent ?? '',
         voice: document.querySelector('[data-testid="voice-badge"]')?.textContent ?? '',
         mic: document.querySelector('[data-testid="mic-badge"]')?.textContent ?? '',
+        live: document.querySelector('[data-testid="live-badge"]')?.textContent ?? '',
       }),
       brainCalls: () => objectBrain.calls.map((c) => ({ ...c })),
     };

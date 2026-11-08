@@ -4,8 +4,8 @@
 // Fixed lines (GO, "wait for truth", gravity changes) may be served from the server's disk
 // cache; the caption says "cached" when they were.
 
-import { say } from '../objects/format';
 import type { Receipt } from '../objects/receipt';
+import { VoiceComposer } from '../objects/messages';
 
 export type LineKind = 'receipt' | 'refusal' | 'go' | 'wait' | 'gravity' | 'stop' | 'info';
 export type Via = 'elevenlabs' | 'elevenlabs (cached)' | 'browser voice' | 'captions only';
@@ -69,9 +69,29 @@ export class ConsoleVoice {
   private queue: Promise<void> = Promise.resolve();
   private audio: HTMLAudioElement | null = null;
   private readonly listeners = new Set<(caption: Caption) => void>();
+  /** Lines said and not yet finished playing (or skipped). Above 0 means the console is speaking. */
+  private pending = 0;
+  private readonly speakingListeners = new Set<(speaking: boolean) => void>();
 
   badge(): string {
     return this.live ? VOICE_BADGE.live : VOICE_BADGE.offline;
+  }
+
+  /** True from the moment a line is said until its audio has ended (live talk pauses its ears meanwhile). */
+  get speaking(): boolean {
+    return this.pending > 0;
+  }
+
+  /** Called with true when the console starts speaking and false when it has gone quiet. */
+  onSpeakingChange(listener: (speaking: boolean) => void): () => void {
+    this.speakingListeners.add(listener);
+    return () => this.speakingListeners.delete(listener);
+  }
+
+  private countSpeaking(delta: 1 | -1): void {
+    const was = this.pending > 0;
+    this.pending = Math.max(0, this.pending + delta);
+    if (was !== this.pending > 0) for (const listener of this.speakingListeners) listener(this.pending > 0);
   }
 
   onCaption(listener: (caption: Caption) => void): () => void {
@@ -87,7 +107,11 @@ export class ConsoleVoice {
     if (options.interrupt) this.cutOff();
     const generation = this.generation;
     this.emit(caption);
-    this.queue = this.queue.then(() => (generation === this.generation ? this.play(caption, options) : undefined)).catch(() => undefined);
+    this.countSpeaking(1);
+    this.queue = this.queue
+      .then(() => (generation === this.generation ? this.play(caption, options) : undefined))
+      .catch(() => undefined)
+      .finally(() => this.countSpeaking(-1));
     return caption;
   }
 
@@ -176,36 +200,25 @@ export class ConsoleVoice {
 /** The page's one console voice. Other features (the delay mode's GO and "wait for truth") call speakLine. */
 export const consoleVoice = new ConsoleVoice();
 
+/** The speaking-state hook live talk uses so it never hears RoBuff's own voice. */
+export interface SpeakingState {
+  readonly speaking: boolean;
+  onSpeakingChange(listener: (speaking: boolean) => void): () => void;
+}
+
 export function speakLine(text: string, kind: LineKind = 'info', options: SayOptions = {}): Caption {
   return consoleVoice.say(text, kind, options);
 }
 
-/** The spoken summary of a finished object request: the verdict, then one reason. */
-export function receiptLine(receipt: Receipt, spawned: boolean): { text: string; kind: LineKind } {
-  const refused = receipt.steps.find((s) => s.action === 'refused');
-  if (!spawned || receipt.verdict === 'REFUSED') {
-    const why = refused?.message ?? receipt.steps[receipt.steps.length - 1]?.message ?? 'A check refused it.';
-    return { text: `Refused. ${why}`, kind: 'refusal' };
-  }
-  if (receipt.verdict === 'ADJUSTED') {
-    const change = receipt.steps.find((s) => s.action === 'rescaled' || s.action === 'clamped');
-    return { text: `${change ? `${change.message} ` : ''}Adjusted: ${sizeText(receipt)} It lifted in the simulated lift test.`, kind: 'receipt' };
-  }
-  return { text: `Done: ${sizeText(receipt)} It lifted in the simulated lift test.`, kind: 'receipt' };
-}
+/** The page's one composer: it remembers the last line and whether the jaw limit was said. */
+const receiptVoice = new VoiceComposer();
 
 /**
- * One width, stated once. The guardrail sizes the model by its narrowest width; settling can turn
- * it, so the width measured at rest may differ. Then the line says plainly it was measured after it
- * settled, instead of quoting a second width as if it were the planned one.
+ * The spoken summary of a finished object request: a short line that names the object, its size
+ * and mass, and the lift verdict, in rotating phrasings; never the same line twice in a row, and
+ * the jaw limit at most once a session unless a width refusal needs it. The on-screen receipt
+ * keeps every detail.
  */
-function sizeText(receipt: Receipt): string {
-  const planned = receipt.narrow_width_mm;
-  const settled = receipt.rest?.narrow_width_mm ?? null;
-  const grams = receipt.mass_kg !== null ? `${say(receipt.mass_kg * 1000)} grams` : null;
-  if (settled !== null && planned !== null && say(settled) !== say(planned)) {
-    return `${grams ? `${grams}. ` : ''}After it settled it measured ${say(settled)} millimetres at its narrowest.`;
-  }
-  const width = settled ?? planned;
-  return `${width !== null ? `${say(width)} millimetres across` : 'made'}${grams ? `, ${grams}` : ''}.`;
+export function receiptLine(receipt: Receipt, spawned: boolean): { text: string; kind: LineKind } {
+  return receiptVoice.compose(receipt, spawned);
 }

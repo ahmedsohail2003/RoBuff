@@ -21,6 +21,7 @@ import { mountSpaceAndGravity } from './ui/gravityMenu';
 import { mountDelay } from './delay/mountDelay';
 import { mountConsole } from './ui/console';
 import { mountVoice } from './voice/pushToTalk';
+import { mountLiveTalk } from './voice/liveTalk';
 import { mountStopGesture } from './safety/mountStopGesture';
 
 function element(id: string): HTMLElement {
@@ -79,7 +80,7 @@ async function main(): Promise<void> {
     }
     mountSpaceAndGravity(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     const delayRig = mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
-    mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
+    mountLiveTalk(mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test'), app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountStopGesture(app, webcam, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountConsole(app, delayRig, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountObjectPanel(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test').catch((error: unknown) => {
