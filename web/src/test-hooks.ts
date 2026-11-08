@@ -6,6 +6,9 @@ import { palmSize, pinchRatio } from './input/landmarks';
 import { CUBE_BODY } from './input/scene';
 import type { HandOverlay } from './render/handOverlay';
 import type { ContactReport, Vec3 } from './sim/simulation';
+import { screenAxes } from './control/voiceMotion';
+import { operatorSource } from './delay/dualSim';
+import { VoiceSource } from './input/voiceSource';
 
 export interface SimHook {
   readonly ready: boolean;
@@ -44,6 +47,22 @@ export interface SimHook {
    * URL, and reports what it found and how long inference took.
    */
   detectHandsInImage(url: string, numHands?: number): Promise<ImageDetection>;
+  /** The voice source in the operator's seat (inside the Moon delay when there is one), or null when the hand has the arm. */
+  voiceMotion(): VoiceMotionState | null;
+  /** The camera's azimuth and the floor directions voice uses for left/right and toward/away. */
+  screen(): { azimuth: number; right: Vec3; away: Vec3 };
+}
+
+export interface VoiceMotionState {
+  owner: 'voice';
+  state: string;
+  goal: Vec3;
+  grip: number;
+  label: string;
+  phase: string | null;
+  clamped: boolean;
+  parkedKind: string | null;
+  busy: boolean;
 }
 
 export interface ImageDetection {
@@ -141,5 +160,15 @@ export function installTestHooks(app: App, overlay: HandOverlay): void {
       return overlay.framesDrawn;
     },
     detectHandsInImage,
+    voiceMotion: () => {
+      const seat = operatorSource(loop);
+      if (!(seat instanceof VoiceSource)) return null;
+      return { owner: 'voice', state: seat.state, goal: [...seat.goal] as Vec3, grip: seat.grip, label: seat.label, phase: seat.phase, clamped: seat.clamped, parkedKind: seat.parked?.kind ?? null, busy: seat.busy };
+    },
+    screen: () => {
+      const azimuth = app.viewport.azimuth;
+      const axes = screenAxes(azimuth);
+      return { azimuth, right: axes.right, away: axes.away };
+    },
   };
 }

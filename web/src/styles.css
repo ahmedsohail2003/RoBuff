@@ -106,6 +106,27 @@ body.console-layout #stop-banner button, body.console-layout #camera-intro butto
 /* Secondary text in the panels: lifted to the muted colour for contrast on the panel background. */
 #console #object-panel li .code, #console #voice-panel .caption .via { color: #9aa3bd; }
 
+/* The skin box under the object receipt (ui/skinControls.ts). Disabled controls keep full
+   opacity and a readable colour: they are dashed instead of faded, so text stays above 4.5:1. */
+#skin-box { margin: 10px 0 0; padding: 8px 10px 10px; border: 1px solid #3a466e; border-radius: 6px; min-width: 0; }
+#skin-box legend { padding: 0 4px; font-weight: 700; font-size: 13px; color: #e6e9f2; }
+#skin-box .skin-badge { font-size: 11px; font-weight: 600; color: #1b1300; background: #f2c14e; border-radius: 3px; padding: 1px 6px; margin-left: 4px; }
+#skin-box .skin-badge[data-live="true"] { color: #062214; background: #7ee2a8; }
+#skin-box .skin-badge[data-testid="skin-source-upload"] { color: #0b1020; background: #b9c8ff; }
+#skin-box .skin-form { display: block; margin: 4px 0 6px; }
+#skin-box .skin-label { display: block; font-size: 12px; color: #c9cfe0; margin: 2px 0; }
+#skin-box .skin-inline { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+#skin-box .skin-row { display: flex; gap: 6px; margin-top: 4px; }
+#skin-box input[type="text"] { flex: 1; min-width: 0; font: inherit; padding: 5px 7px; border-radius: 4px; border: 1px solid #3a466e; background: #121a33; color: #e6e9f2; }
+#skin-box select { flex: 1; min-width: 0; font: inherit; padding: 3px 4px; border-radius: 4px; border: 1px solid #3a466e; background: #121a33; color: #e6e9f2; }
+#skin-box option { color: #e6e9f2; background: #121a33; }
+#skin-box .skin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+#skin-box .skin-chips button { font-size: 12px; padding: 3px 8px; }
+#object-panel #skin-box button:disabled, #object-panel #skin-box input:disabled, #object-panel #skin-box select:disabled { opacity: 1; color: #c9cfe0; border-style: dashed; cursor: not-allowed; }
+#object-panel #skin-box input[type="checkbox"] { flex: none; width: auto; margin: 0; padding: 0; }
+#skin-box .skin-status { color: #c9cfe0; min-height: 1.4em; }
+#skin-box[data-busy="true"] .skin-status { color: #e6e9f2; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

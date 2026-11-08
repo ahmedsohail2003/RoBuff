@@ -1,6 +1,7 @@
 import type { MjModel } from '@mujoco/mujoco';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Mujoco } from '../sim/mujocoRuntime';
 import { DEFAULT_VIEW } from './defaultView';
 import { buildBodyGroups } from './modelMeshes';
@@ -73,6 +74,50 @@ export class Viewport {
   render(): void {
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private skinEnv: THREE.Texture | null = null;
+
+  /**
+   * A soft studio reflection for metal skins only (gold, chrome): metal shows its colour through
+   * what it reflects, and the space scene has nothing to reflect. Made once, on first use, and set
+   * on skin materials alone, so the arm, the floor and the sky look as before.
+   */
+  skinEnvironment(): THREE.Texture {
+    if (!this.skinEnv) {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      const room = new RoomEnvironment();
+      this.skinEnv = pmrem.fromScene(room, 0.04).texture;
+      room.dispose();
+      pmrem.dispose();
+    }
+    return this.skinEnv;
+  }
+
+  /** The GPU's largest anisotropic filter (0 without the extension). three clamps texture.anisotropy to it. */
+  maxAnisotropy(): number {
+    return this.renderer.capabilities.getMaxAnisotropy();
+  }
+
+  /**
+   * The anisotropy the GPU texture really has, read back with getTexParameter after three has
+   * uploaded it (null before the first upload or without the extension). Binds through three's
+   * state tracker, so its texture cache stays right.
+   */
+  textureAnisotropy(texture: THREE.Texture): number | null {
+    const gl = this.renderer.getContext();
+    const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+    if (!ext) return null;
+    const handle = (this.renderer.properties.get(texture) as { __webglTexture?: WebGLTexture | null }).__webglTexture;
+    if (!handle) return null;
+    this.renderer.state.bindTexture(gl.TEXTURE_2D, handle);
+    const value: unknown = gl.getTexParameter(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT);
+    return typeof value === 'number' ? value : null;
+  }
+
+  /** The orbit camera's azimuth, rad (OrbitControls theta about z): voice reads it to turn "left" into screen left. */
+  get azimuth(): number {
+    return this.controls.getAzimuthalAngle();
   }
 
   /** Name of the GPU or software rasterizer, what the last frame drew, and where the camera is. */

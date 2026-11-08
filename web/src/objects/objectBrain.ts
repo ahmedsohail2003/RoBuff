@@ -16,6 +16,11 @@ export interface ServerHealth {
   reachable: boolean;
   gemini: ServiceState;
   elevenlabs: ServiceState;
+  /** Nano Banana skins (the same Gemini key). Missing on an older key server. */
+  skin?: ServiceState;
+  /** The skin image model ids the key server uses, from health.models. */
+  skinModel?: string | null;
+  skinModelHigh?: string | null;
 }
 
 export const NO_SERVER: ServerHealth = { reachable: false, gemini: 'missing', elevenlabs: 'missing' };
@@ -31,6 +36,9 @@ export async function fetchHealth(timeoutMs = 2500): Promise<ServerHealth> {
       reachable: true,
       gemini: body.gemini === 'configured' ? 'configured' : 'missing',
       elevenlabs: body.elevenlabs === 'configured' ? 'configured' : 'missing',
+      skin: body.skin === 'configured' ? 'configured' : 'missing',
+      skinModel: typeof (body.models as Record<string, unknown> | undefined)?.skin === 'string' ? ((body.models as Record<string, string>).skin ?? null) : null,
+      skinModelHigh: typeof (body.models as Record<string, unknown> | undefined)?.skin_high === 'string' ? ((body.models as Record<string, string>).skin_high ?? null) : null,
     };
   } catch {
     return NO_SERVER;
@@ -72,6 +80,16 @@ export interface BrainCall {
   error: string | null;
 }
 
+/** What voice and chat may know about the object in the slot. */
+export interface CurrentObject {
+  name: string;
+  kind: string;
+  partNames: string[];
+  bodyName: string;
+  busy: boolean;
+  proven: boolean;
+}
+
 export const BRAIN_BADGE = { live: 'object brain: Gemini 3.8 Flash (live)', offline: 'object brain: offline mock (no key)' } as const;
 
 export class ObjectBrain {
@@ -79,6 +97,15 @@ export class ObjectBrain {
   readonly calls: BrainCall[] = [];
   /** Set by the object panel: runs one object request through the panel, receipt and all. */
   requestObject: ((text: string) => Promise<void>) | null = null;
+  /**
+   * Set by the object panel (ui/objectPanel.ts): what is in the slot now, for voice and chat.
+   * Null while the cube is there.
+   */
+  currentObject?: () => CurrentObject | null;
+  /** Set by the object panel: paints the current object (or one named part) and resolves with the line to show and say. */
+  skinObject?: (text: string, part?: string | null) => Promise<string>;
+  /** Set by the object panel: takes the skin off the current object (or one named part). */
+  clearSkin?: (part?: string | null) => Promise<string>;
   private readonly listeners = new Set<(brain: ObjectBrain) => void>();
 
   get live(): boolean {

@@ -6,6 +6,7 @@ import { createInputSource } from './input/createSource';
 import { handsFromUrl } from './input/handTracker';
 import { MouseSource } from './input/mouseSource';
 import { WebcamSource } from './input/webcamSource';
+import { handSeat } from './input/voiceSource';
 import { cubePickPlan } from './input/scene';
 import { HandOverlay } from './render/handOverlay';
 import { showNotice } from './render/notice';
@@ -60,9 +61,10 @@ async function main(): Promise<void> {
     let states: AppStates | null = null;
     const app = new App(loop, new Viewport(viewportElement, mujoco, model), () => {
       states?.frame();
-      const source = loop.source;
+      // The hand behind the seat: unwrapped from the Moon delay and from a voice takeover.
+      const source = handSeat(loop);
       app.viewport.setOrbitButton(source?.kind === 'mouse' ? 'right' : 'left');
-      overlay.canvas.hidden = !source || source.kind === 'mouse';
+      overlay.canvas.hidden = !source || source.kind === 'mouse' || loop.source?.kind === 'voice';
       if (!overlay.canvas.hidden) {
         overlay.draw(loop.lastHand, source instanceof WebcamSource ? source.video : null, source!.kind === 'webcam' ? 'camera' : 'virtual hand');
       }
@@ -80,7 +82,7 @@ async function main(): Promise<void> {
     }
     mountSpaceAndGravity(app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     const delayRig = mountDelay(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test');
-    mountLiveTalk(mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test'), app, import.meta.env.DEV || import.meta.env.MODE === 'test');
+    mountLiveTalk(mountVoice(app, import.meta.env.DEV || import.meta.env.MODE === 'test', mujoco), app, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountStopGesture(app, webcam, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountConsole(app, delayRig, import.meta.env.DEV || import.meta.env.MODE === 'test');
     mountObjectPanel(app, mujoco, import.meta.env.DEV || import.meta.env.MODE === 'test').catch((error: unknown) => {
