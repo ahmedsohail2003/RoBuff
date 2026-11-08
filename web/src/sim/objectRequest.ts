@@ -13,7 +13,8 @@ import { say } from '../objects/format';
 import { LOW_GRAVITY_NOTE, LOW_GRAVITY_NOTE_BELOW } from './gravity';
 import { ArmLiftTester, type LiftRun } from './liftTester';
 import type { Mujoco } from './mujocoRuntime';
-import type { ObjectSlot, SpawnReport } from './objectSlot';
+import { CUBE_SLOT_BODY, type ObjectSlot, type SpawnReport } from './objectSlot';
+import { setRockReturn } from './rockReturn';
 
 export type StageState = 'pending' | 'running' | 'ok' | 'note' | 'adjusted' | 'refused';
 
@@ -74,13 +75,31 @@ export class ObjectRequests {
   last: RequestOutcome | null = null;
   /** The receipt now in the slot, or null while the cube is there. */
   private occupant: Receipt | null = null;
+  /** Set by putRockBack: a later failed request then leaves the rock, not the object before it. */
+  private rockBack = false;
 
   constructor(
     private readonly mujoco: Mujoco,
     readonly slot: ObjectSlot,
     private readonly hooks: ObjectRequestHooks,
     private readonly brain: ObjectBrain = objectBrain,
-  ) {}
+  ) {
+    setRockReturn(() => this.putRockBack());
+  }
+
+  /**
+   * Takes the spawned object out and puts the 30 mm test rock (the scene's own cube slot)
+   * back, for the delay modes. False while a request is running; true when the rock is there.
+   */
+  putRockBack(): boolean {
+    if (this.busy) return false;
+    if (this.occupant === null && this.slot.bodyName === CUBE_SLOT_BODY) return true;
+    this.slot.restoreCube();
+    this.occupant = null;
+    this.rockBack = true;
+    this.hooks.onOccupant(null);
+    return true;
+  }
 
   async run(text: string, onProgress: (progress: RequestProgress) => void = () => {}): Promise<RequestOutcome> {
     if (this.busy) throw new Error('another object request is still running');
@@ -200,6 +219,7 @@ export class ObjectRequests {
       }
       this.slot.receipt = receipt;
       this.occupant = receipt;
+      this.rockBack = false;
     } else {
       // A failed lift is a refusal: take it out of the scene again.
       this.restorePrevious(receipt);
@@ -223,7 +243,7 @@ export class ObjectRequests {
   }
 
   private restorePrevious(failed: Receipt): void {
-    const previous = this.last?.spawned ? this.last.receipt : null;
+    const previous = this.last?.spawned && !this.rockBack ? this.last.receipt : null;
     if (previous && previous !== failed) {
       this.slot.spawn(previous);
       this.occupant = previous;

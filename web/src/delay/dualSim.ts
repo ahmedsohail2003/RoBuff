@@ -26,6 +26,7 @@ import { ArmIk } from '../control/ik';
 import type { HandState, InputSource } from '../input/handState';
 import { FIXED_PAD_SITE, GRIPPER_SITE, MOVING_PAD_SITE } from '../sim/armXml';
 import { registerGravityTarget, applyGravityTo } from '../sim/gravity';
+import { rockReturn } from '../sim/rockReturn';
 import type { Mujoco } from '../sim/mujocoRuntime';
 import { Simulation, type Vec3 } from '../sim/simulation';
 import { DelayLine, ONE_WAY_DELAY_S } from './delayLine';
@@ -201,6 +202,9 @@ export interface TickInfo {
   error: GhostError | null;
 }
 
+/** Shown when a switch to a delay mode takes a spawned object out and puts the rock back. */
+export const ROCK_BACK_CAPTION = 'Putting the 30 mm test rock back for the delay mode.';
+
 export interface SetModeOptions {
   /** Use the truth rock (2.3 g/cm3, friction 0.6) in this mode. Default: in the Moon modes only. Trials use it in Direct too. */
   rock?: boolean;
@@ -284,14 +288,30 @@ export class DelayRig {
     return this.ghostPending;
   }
 
-  /** Switches mode and resets the scene (arm home, rock at its start pose, clock at zero). */
+  /**
+   * Switches mode and resets the scene (arm home, rock at its start pose, clock at zero).
+   * When a spawned object holds the slot, the 30 mm test rock is put back first.
+   */
   async setMode(mode: DelayMode, options: SetModeOptions = {}): Promise<void> {
     const wantRock = options.rock ?? mode !== 'direct';
-    if ((mode !== 'direct' || wantRock) && !this.hasRock()) {
+    const needRock = mode !== 'direct' || wantRock;
+    if (needRock && !this.hasRock() && !rockReturn()) {
       throw new Error('The delay modes use the 30 mm test rock, and an object is in the slot now. Reload the page to get the rock back.');
     }
     if (mode === 'moon_ghost_on') await this.prepareGhost();
-    this.notice = null;
+    let caption: string | null = null;
+    if (needRock && !this.hasRock()) {
+      if (!rockReturn()?.() || !this.hasRock()) {
+        throw new Error('The delay modes use the 30 mm test rock. An object request is still running; try again when it finishes.');
+      }
+      caption = ROCK_BACK_CAPTION;
+    }
+    if (this.truthSim !== this.loop.sim) {
+      // The live model was swapped (a spawn, or the rock put back): the old rock edits went with it.
+      this.restoreRock = null;
+      this.rockOn = false;
+    }
+    this.notice = caption;
     // Leave the old mode.
     if (this.delayed) {
       if (this.loop.source === this.delayed) this.loop.source = this.delayed.inner;
