@@ -15,6 +15,9 @@ import { gravity, type GravityPreset } from '../sim/gravity';
 import { physicsOnlyFilesAsync } from '../sim/physicsScene';
 import { installObjectHooks } from './objectHooks';
 import { BRAIN_BADGE, objectBrain } from '../objects/objectBrain';
+import { displayName } from '../objects/skinUv';
+import { skinBrain } from '../render/skinSource';
+import { SkinControls } from './skinControls';
 import { consoleVoice, receiptLine } from '../voice/speak';
 
 export interface PanelPreset {
@@ -99,6 +102,8 @@ export class ObjectPanel {
   private readonly massLabel: HTMLElement;
   private readonly massFill: HTMLElement;
   private readonly list: HTMLOListElement;
+  /** Told when a request starts and ends, so the skin box can wait for it. */
+  onBusy: ((busy: boolean) => void) | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -255,6 +260,7 @@ export class ObjectPanel {
   private setBusy(busy: boolean): void {
     for (const button of this.buttons) button.disabled = busy;
     this.root.dataset.busy = String(busy);
+    this.onBusy?.(busy);
   }
 }
 
@@ -266,10 +272,41 @@ export async function mountObjectPanel(app: App, mujoco: Mujoco, withHooks: bool
   const group = app.viewport.bodyGroup(app.sim.model.nbody - 1);
   if (!group) throw new Error('the viewport has no group for the slot body');
   const renderer = new SlotRenderer(group);
-  const requests = new ObjectRequests(mujoco, slot, { onOccupant: (receipt) => renderer.show(receipt) });
+  renderer.maxAnisotropy = app.viewport.maxAnisotropy();
+  renderer.glAnisotropy = (texture) => app.viewport.textureAnisotropy(texture);
+  renderer.skinEnvironment = () => app.viewport.skinEnvironment();
+  let skins: SkinControls | null = null;
+  const requests = new ObjectRequests(mujoco, slot, {
+    onOccupant: (receipt) => {
+      renderer.show(receipt);
+      // Only a Moon mode puts the rock back while no request runs (putRockBack refuses when busy).
+      skins?.setObject(receipt, receipt === null && !requests.busy ? 'rock' : null);
+    },
+  });
   const panel = new ObjectPanel(document.body, requests);
+  skins = new SkinControls(renderer, skinBrain);
+  // After the receipt: the skin paints the object the receipt describes.
+  panel.root.appendChild(skins.root);
+  panel.onBusy = (busy) => skins?.setBusy(busy);
+  objectBrain.onChange(() => skins?.showBadge());
   objectBrain.requestObject = (text) => panel.request(text);
+  const controls = skins;
+  objectBrain.currentObject = () => {
+    const receipt = renderer.receipt;
+    if (!receipt) return null;
+    return {
+      name: displayName(receipt),
+      kind: receipt.spec.kind,
+      partNames: renderer.skin().partNames,
+      bodyName: slot.bodyName,
+      busy: requests.busy || controls.busy,
+      // The slot's receipt is the one the lift test updated; the drawn one is from the spawn.
+      proven: (slot.receipt ?? receipt).lift.status === 'passed',
+    };
+  };
+  objectBrain.skinObject = (text, part) => controls.request({ text, part: part ?? null });
+  objectBrain.clearSkin = (part) => controls.remove(part ?? null);
   gravity.onChange((preset) => panel.showFrictionAt(preset));
-  if (withHooks) installObjectHooks(app, requests, panel, renderer);
+  if (withHooks) installObjectHooks(app, requests, panel, renderer, controls);
   return panel;
 }

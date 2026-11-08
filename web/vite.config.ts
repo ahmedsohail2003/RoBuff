@@ -1,6 +1,12 @@
 import net from 'node:net';
 import type { ProxyOptions } from 'vite';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
+
+// The one timed test (the 150 ms CPU budget in skinPattern.test.ts) runs in its own group, after
+// every other file has finished. This laptop's i9-13900H mixes fast P-cores and slow E-cores, and
+// Windows counts CPU time in 15.6 ms ticks. Under the full parallel run a worker can land on a
+// loaded E-core, and the same drawing then counts about 3 times the CPU it costs alone.
+const TIMED_TESTS = ['src/objects/test/skinPattern.test.ts'];
 
 // /api goes to the key server (server/index.mjs; KEY_SERVER_PORT, default 8787). When it is
 // not running, the dev and preview servers answer for it: /api/health says { ok: false } and
@@ -43,5 +49,13 @@ export default defineConfig({
   optimizeDeps: { exclude: ['@mujoco/mujoco', '@mediapipe/tasks-vision'] },
   build: { target: 'es2022' },
   // 30 s, not Vitest's 5 s: src/objects/test/generate.test.ts once ran past 5 s while Playwright shared the machine.
-  test: { include: ['src/**/*.test.ts'], testTimeout: 30000, hookTimeout: 30000 },
+  // No root include: extends merges arrays, so a root include would put every file in 'timed' too.
+  test: {
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    projects: [
+      { extends: true, test: { name: 'unit', include: ['src/**/*.test.ts'], exclude: [...configDefaults.exclude, ...TIMED_TESTS], sequence: { groupOrder: 0 } } },
+      { extends: true, test: { name: 'timed', include: TIMED_TESTS, sequence: { groupOrder: 1 } } },
+    ],
+  },
 });

@@ -5,7 +5,9 @@
 
 import * as THREE from 'three';
 import type { MaterialId } from '../objects/materials';
+import type { ObjectMesh } from '../objects/mesh';
 import type { Receipt } from '../objects/receipt';
+import { SkinLayer, type SkinImage, type SkinLayerState, type SkinRecipe } from './objectSkin';
 
 interface Look {
   roughness: number;
@@ -67,6 +69,21 @@ export function buildObjectMesh(receipt: Receipt): THREE.Mesh {
 export class SlotRenderer {
   private readonly original: THREE.Object3D[];
   private current: THREE.Mesh | null = null;
+  private currentReceipt: Receipt | null = null;
+  private layer: SkinLayer | null = null;
+  /**
+   * Skins of the last two objects shown, keyed by their ObjectMesh. A failed lift re-spawns the
+   * object before it with the same receipt mesh, so its skin comes back with it. A new object
+   * has a new mesh and starts bare.
+   */
+  private readonly kept = new Map<ObjectMesh, SkinRecipe[]>();
+  private readonly listeners = new Set<(receipt: Receipt | null) => void>();
+  /** The GPU's largest anisotropic filter, for the skin state. Set by whoever owns the viewport. */
+  maxAnisotropy = 0;
+  /** Reads an uploaded texture's real GL anisotropy back (viewport.textureAnisotropy). Set by the viewport's owner. */
+  glAnisotropy: ((texture: THREE.Texture) => number | null) | null = null;
+  /** The reflection metal skins use (viewport.skinEnvironment). Set by the viewport's owner. */
+  skinEnvironment: (() => THREE.Texture | null) | null = null;
 
   constructor(private readonly group: THREE.Group) {
     this.original = [...group.children];
@@ -74,26 +91,102 @@ export class SlotRenderer {
 
   show(receipt: Receipt | null): void {
     if (this.current) {
+      const was = this.currentReceipt?.mesh ?? null;
+      if (was && this.layer) {
+        const recipes = this.layer.recipes();
+        if (recipes.length > 0) {
+          this.kept.delete(was);
+          this.kept.set(was, recipes);
+          while (this.kept.size > 2) this.kept.delete(this.kept.keys().next().value!);
+        } else this.kept.delete(was);
+      }
+      this.layer?.dispose();
+      this.layer = null;
       this.group.remove(this.current);
       this.current.geometry.dispose();
-      (this.current.material as THREE.Material).dispose();
+      // A skinned mesh draws a material array; free every material and its texture.
+      const materials = Array.isArray(this.current.material) ? this.current.material : [this.current.material];
+      for (const m of materials) {
+        (m as THREE.MeshStandardMaterial).map?.dispose();
+        m.dispose();
+      }
       this.current = null;
+      this.currentReceipt = null;
     }
     for (const child of this.original) child.visible = receipt === null;
+    if (receipt === null) this.kept.clear();
     if (receipt) {
       this.current = buildObjectMesh(receipt);
+      this.currentReceipt = receipt;
       this.group.add(this.current);
+      const again = receipt.mesh ? this.kept.get(receipt.mesh) : undefined;
+      if (again) for (const r of again) this.skin().apply(r.parts, r.image);
     }
+    for (const listener of this.listeners) listener(receipt);
   }
 
-  /** Vertices and triangles now drawn for the object, for the debug hook. */
-  stats(): { vertices: number; triangles: number; material: string } | null {
+  /** Called after every show(), with what is in the slot now. */
+  onShow(listener: (receipt: Receipt | null) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** The receipt drawn now, or null while the cube is there. */
+  get receipt(): Receipt | null {
+    return this.currentReceipt;
+  }
+
+  /** The receipt mesh drawn now: a late skin checks it is still the same object before applying. */
+  get objectMesh(): ObjectMesh | null {
+    return this.currentReceipt?.mesh ?? null;
+  }
+
+  /** The skin layer of the object drawn now, made on first use. Throws while the cube is there. */
+  skin(): SkinLayer {
+    if (!this.current || !this.currentReceipt) throw new Error('there is no spawned object to paint');
+    if (!this.layer) {
+      const look = LOOKS[this.currentReceipt.spec.material];
+      this.layer = new SkinLayer(this.current, this.currentReceipt, {
+        maxAnisotropy: this.maxAnisotropy,
+        look,
+        readGl: (t) => this.glAnisotropy?.(t) ?? null,
+        envMap: () => this.skinEnvironment?.() ?? null,
+      });
+    }
+    return this.layer;
+  }
+
+  /** Paints parts of the object drawn now, if it is still `expect` (the mesh the request was made for). */
+  applySkin(expect: ObjectMesh, parts: readonly number[], image: SkinImage): boolean {
+    if (!this.currentReceipt || this.currentReceipt.mesh !== expect) return false;
+    this.skin().apply(parts, image);
+    return true;
+  }
+
+  removeSkin(parts: readonly number[] | 'all'): number {
+    return this.layer ? this.layer.remove(parts) : 0;
+  }
+
+  skinState(): SkinLayerState | null {
+    if (!this.current || !this.currentReceipt) return null;
+    return this.skin().state();
+  }
+
+  /** Vertices and triangles now drawn for the object, for the debug hook, plus its skins. */
+  stats(): { vertices: number; triangles: number; material: string; materials: number; skins: number; skinnedParts: number; textureSize: number | null } | null {
     if (!this.current) return null;
     const geometry = this.current.geometry;
+    const materials = Array.isArray(this.current.material) ? this.current.material : [this.current.material];
+    const maps = materials.map((m) => (m as THREE.MeshStandardMaterial).map).filter((t): t is THREE.Texture => !!t);
+    const image = maps[0]?.image as { width?: number } | undefined;
     return {
       vertices: geometry.getAttribute('position').count,
-      triangles: (geometry.getIndex()?.count ?? 0) / 3,
-      material: (this.current.material as THREE.MeshStandardMaterial).type,
+      triangles: (geometry.getIndex()?.count ?? geometry.getAttribute('position').count) / 3,
+      material: (materials[0] as THREE.MeshStandardMaterial).type,
+      materials: materials.length,
+      skins: maps.length,
+      skinnedParts: this.layer?.skinnedParts ?? 0,
+      textureSize: image?.width ?? null,
     };
   }
 }

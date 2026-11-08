@@ -5,7 +5,7 @@
 import { say, sayGravityValue, sayLength, sayMass, sayMassLimit, sayMm } from './format';
 import { GRAVITY, MAX_HULL_VERT } from './limits';
 import type { Receipt } from './receipt';
-import type { ObjectKind } from './spec';
+import { displayName } from './skinUv';
 
 export const LIFT_NOT_RUN_TEXT = 'lift test: not run yet';
 
@@ -180,19 +180,6 @@ export interface SpokenLine {
   kind: 'receipt' | 'refusal';
 }
 
-const KIND_NAMES: Readonly<Record<ObjectKind, string>> = {
-  asteroid: 'rock sample',
-  panel: 'solar panel',
-  dish: 'dish',
-  bus: 'satellite bus',
-  fragment: 'fragment',
-  box: 'box',
-  cylinder: 'cylinder',
-  sphere: 'ball',
-  cone: 'cone',
-  assembly: 'model',
-};
-
 interface LineFacts {
   name: string;
   lengthMm: number | null;
@@ -230,7 +217,7 @@ function capital(text: string): string {
 }
 
 function factsOf(receipt: Receipt): LineFacts {
-  const name = receipt.spec.name?.trim() || KIND_NAMES[receipt.spec.kind];
+  const name = displayName(receipt);
   const lengthMm = receipt.size_mm ? Math.max(receipt.size_mm[0], receipt.size_mm[1]) : null;
   return {
     name,
